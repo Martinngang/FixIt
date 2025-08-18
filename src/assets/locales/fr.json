@@ -1,0 +1,21 @@
+{
+  "title": "FixIt : Signaler les problèmes locaux",
+  "reportIssue": "Signaler un problème",
+  "description": "Description",
+  "category": "Catégorie",
+  "location": "Emplacement",
+  "submit": "Soumettre",
+  "myReports": "Mes signalements",
+  "login": "Connexion",
+  "logout": "Déconnexion",
+  "adminDashboard": "Tableau de bord admin",
+  "status": "Statut",
+  "assign": "Assigner",
+  "markFixed": "Marquer comme résolu",
+  "selectLanguage": "Choisir la langue",
+  "notFound": "Page non trouvée",
+  "email": "Email",
+  "password": "Mot de passe",
+  "register": "S'inscrire",
+  "homeWelcome": "Signaler et suivre les problèmes locaux dans votre communauté."
+}

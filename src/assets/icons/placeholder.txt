@@ -1,0 +1,2 @@
+// Placeholder for SVG icons
+// TODO: Add SVG icon files as needed

@@ -1,0 +1,21 @@
+{
+  "title": "FixIt: Report Local Issues",
+  "reportIssue": "Report an Issue",
+  "description": "Description",
+  "category": "Category",
+  "location": "Location",
+  "submit": "Submit",
+  "myReports": "My Reports",
+  "login": "Login",
+  "logout": "Logout",
+  "adminDashboard": "Admin Dashboard",
+  "status": "Status",
+  "assign": "Assign",
+  "markFixed": "Mark as Fixed",
+  "selectLanguage": "Select Language",
+  "notFound": "Page not found",
+  "email": "Email",
+  "password": "Password",
+  "register": "Register",
+  "homeWelcome": "Report and track local issues in your community."
+}

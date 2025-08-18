@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "useDefineForClassFields": true,
+    "module": "ESNext",
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "skipLibCheck": true,
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "jsx": "react-jsx",
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "baseUrl": "src"
+  },
+  "include": ["src", "utils/supabase", "components/ui/button.tsx", "components/ui/select.tsx", "components/ui/tabs.tsx", "components/MyIssues.tsx", "components/ReportIssue.tsx", "components/AdminPanel.tsx", "components/Dashboard.tsx", "components/Auth.tsx"]
+}
