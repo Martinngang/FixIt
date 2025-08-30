@@ -1,9 +1,8 @@
-const { Hono } = require('hono')
-const { cors } = require('hono/cors')
-const { logger } = require('hono/logger')
-const { createClient } = require('@supabase/supabase-js')
-const kv = require('./kv_store.tsx')
-const http = require('http')
+import { Hono } from 'npm:hono'
+import { cors } from 'npm:hono/cors'
+import { logger } from 'npm:hono/logger'
+import { createClient } from 'npm:@supabase/supabase-js@2'
+import * as kv from './kv_store.tsx'
 
 const app = new Hono()
 
@@ -16,8 +15,8 @@ app.use('*', cors({
 app.use('*', logger(console.log))
 
 const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  Deno.env.get('SUPABASE_URL')!,
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
 )
 
 // Initialize storage bucket on startup
@@ -32,10 +31,10 @@ async function initializeStorage() {
   }
 }
 
-initializeStorage().catch(console.error)
+await initializeStorage()
 
 // User signup
-app.post('/make-server-accecacf/signup', async (c: any) => {
+app.post('/make-server-accecacf/signup', async (c) => {
   try {
     const { email, password, name } = await c.req.json()
     
@@ -60,7 +59,7 @@ app.post('/make-server-accecacf/signup', async (c: any) => {
 })
 
 // Create new issue
-app.post('/make-server-accecacf/issues', async (c: any) => {
+app.post('/make-server-accecacf/issues', async (c) => {
   try {
     const accessToken = c.req.header('Authorization')?.split(' ')[1]
     const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken)
@@ -98,7 +97,7 @@ app.post('/make-server-accecacf/issues', async (c: any) => {
 })
 
 // Upload photo for issue
-app.post('/make-server-accecacf/issues/:id/photo', async (c: any) => {
+app.post('/make-server-accecacf/issues/:id/photo', async (c) => {
   try {
     const accessToken = c.req.header('Authorization')?.split(' ')[1]
     const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken)
@@ -119,7 +118,7 @@ app.post('/make-server-accecacf/issues/:id/photo', async (c: any) => {
     }
     
     const formData = await c.req.formData()
-    const file = formData.get('photo')
+    const file = formData.get('photo') as File
     
     if (!file) {
       return c.json({ error: 'No photo file provided' }, 400)
@@ -163,10 +162,10 @@ app.post('/make-server-accecacf/issues/:id/photo', async (c: any) => {
 })
 
 // Get all issues
-app.get('/make-server-accecacf/issues', async (c: any) => {
+app.get('/make-server-accecacf/issues', async (c) => {
   try {
     const issues = await kv.getByPrefix('issue:')
-    const sortedIssues = issues.sort((a: any, b: any) => 
+    const sortedIssues = issues.sort((a, b) => 
       new Date(b.reportedAt).getTime() - new Date(a.reportedAt).getTime()
     )
     
@@ -178,7 +177,7 @@ app.get('/make-server-accecacf/issues', async (c: any) => {
 })
 
 // Get user's issues
-app.get('/make-server-accecacf/my-issues', async (c: any) => {
+app.get('/make-server-accecacf/my-issues', async (c) => {
   try {
     const accessToken = c.req.header('Authorization')?.split(' ')[1]
     const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken)
@@ -188,8 +187,8 @@ app.get('/make-server-accecacf/my-issues', async (c: any) => {
     }
     
     const userIssueIds = await kv.getByPrefix(`user_issue:${user.id}:`)
-    const issues = await kv.mget(userIssueIds.map((id: string) => `issue:${id}`))
-    const sortedIssues = issues.filter(Boolean).sort((a: any, b: any) => 
+    const issues = await kv.mget(userIssueIds.map(id => `issue:${id}`))
+    const sortedIssues = issues.filter(Boolean).sort((a, b) => 
       new Date(b.reportedAt).getTime() - new Date(a.reportedAt).getTime()
     )
     
@@ -200,8 +199,33 @@ app.get('/make-server-accecacf/my-issues', async (c: any) => {
   }
 })
 
+// Get technician's assigned tasks
+app.get('/make-server-accecacf/my-tasks', async (c) => {
+  try {
+    const accessToken = c.req.header('Authorization')?.split(' ')[1]
+    const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken)
+    
+    if (!user?.id) {
+      return c.json({ error: 'Unauthorized' }, 401)
+    }
+    
+    // Get all issues and filter by assigned technician
+    const allIssues = await kv.getByPrefix('issue:')
+    const assignedIssues = allIssues.filter(issue => issue.assignedTo === user.id)
+    
+    const sortedIssues = assignedIssues.sort((a, b) => 
+      new Date(b.assignedAt || b.reportedAt).getTime() - new Date(a.assignedAt || a.reportedAt).getTime()
+    )
+    
+    return c.json({ issues: sortedIssues })
+  } catch (error) {
+    console.log('Get technician tasks error:', error)
+    return c.json({ error: 'Failed to fetch assigned tasks' }, 500)
+  }
+})
+
 // Update issue status
-app.patch('/make-server-accecacf/issues/:id/status', async (c: any) => {
+app.patch('/make-server-accecacf/issues/:id/status', async (c) => {
   try {
     const accessToken = c.req.header('Authorization')?.split(' ')[1]
     const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken)
@@ -236,28 +260,28 @@ app.patch('/make-server-accecacf/issues/:id/status', async (c: any) => {
 })
 
 // Get issue statistics
-app.get('/make-server-accecacf/stats', async (c: any) => {
+app.get('/make-server-accecacf/stats', async (c) => {
   try {
     const issues = await kv.getByPrefix('issue:')
     
     const stats = {
       total: issues.length,
-      byStatus: issues.reduce((acc: any, issue: any) => {
+      byStatus: issues.reduce((acc, issue) => {
         acc[issue.status] = (acc[issue.status] || 0) + 1
         return acc
       }, {}),
-      byCategory: issues.reduce((acc: any, issue: any) => {
+      byCategory: issues.reduce((acc, issue) => {
         acc[issue.category] = (acc[issue.category] || 0) + 1
         return acc
       }, {}),
-      byPriority: issues.reduce((acc: any, issue: any) => {
+      byPriority: issues.reduce((acc, issue) => {
         acc[issue.priority] = (acc[issue.priority] || 0) + 1
         return acc
       }, {}),
       recentActivity: issues
-        .sort((a: any, b: any) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
         .slice(0, 10)
-        .map((issue: any) => ({
+        .map(issue => ({
           id: issue.id,
           title: issue.title,
           status: issue.status,
@@ -274,32 +298,32 @@ app.get('/make-server-accecacf/stats', async (c: any) => {
 })
 
 // Get analytics data for dashboard
-app.get('/make-server-accecacf/analytics', async (c: any) => {
+app.get('/make-server-accecacf/analytics', async (c) => {
   try {
     const issues = await kv.getByPrefix('issue:')
     const now = new Date()
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
     
     // Filter issues from last 30 days
-    const recentIssues = issues.filter((issue: any) => 
+    const recentIssues = issues.filter(issue => 
       new Date(issue.reportedAt) >= thirtyDaysAgo
     )
     
     // Group by day for trending data
-    const dailyReports = recentIssues.reduce((acc: any, issue: any) => {
+    const dailyReports = recentIssues.reduce((acc, issue) => {
       const date = new Date(issue.reportedAt).toDateString()
       acc[date] = (acc[date] || 0) + 1
       return acc
     }, {})
     
     // Calculate resolution rate
-    const resolvedIssues = issues.filter((issue: any) => issue.status === 'resolved')
+    const resolvedIssues = issues.filter(issue => issue.status === 'resolved')
     const resolutionRate = issues.length > 0 ? (resolvedIssues.length / issues.length) * 100 : 0
     
     // Average resolution time
-    const resolvedWithTime = resolvedIssues.filter((issue: any) => issue.updatedAt && issue.reportedAt)
+    const resolvedWithTime = resolvedIssues.filter(issue => issue.updatedAt && issue.reportedAt)
     const avgResolutionTime = resolvedWithTime.length > 0 
-      ? resolvedWithTime.reduce((sum: number, issue: any) => {
+      ? resolvedWithTime.reduce((sum, issue) => {
           const reported = new Date(issue.reportedAt).getTime()
           const resolved = new Date(issue.updatedAt).getTime()
           return sum + (resolved - reported)
@@ -314,15 +338,15 @@ app.get('/make-server-accecacf/analytics', async (c: any) => {
       dailyReports: Object.entries(dailyReports)
         .sort(([a], [b]) => new Date(a).getTime() - new Date(b).getTime())
         .map(([date, count]) => ({ date, count })),
-      categoryBreakdown: issues.reduce((acc: any, issue: any) => {
+      categoryBreakdown: issues.reduce((acc, issue) => {
         acc[issue.category] = (acc[issue.category] || 0) + 1
         return acc
       }, {}),
-      priorityDistribution: issues.reduce((acc: any, issue: any) => {
+      priorityDistribution: issues.reduce((acc, issue) => {
         acc[issue.priority] = (acc[issue.priority] || 0) + 1
         return acc
       }, {}),
-      statusFlow: issues.reduce((acc: any, issue: any) => {
+      statusFlow: issues.reduce((acc, issue) => {
         acc[issue.status] = (acc[issue.status] || 0) + 1
         return acc
       }, {})
@@ -335,9 +359,245 @@ app.get('/make-server-accecacf/analytics', async (c: any) => {
   }
 })
 
-// Create and start the server
-const server = http.createServer(app.fetch)
-const PORT = process.env.PORT || 3000
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`)
+// Helper function to get effective user role (allows temporary override for testing)
+const getEffectiveUserRole = (user: any, request: any) => {
+  // Check for temporary role override header (for testing purposes)
+  const tempRole = request.header('X-Temp-Role')
+  if (tempRole && ['citizen', 'technician', 'admin'].includes(tempRole)) {
+    console.log(`Using temporary role override: ${tempRole} for user ${user.id}`)
+    return tempRole
+  }
+  
+  // Use actual user role from metadata
+  return user.user_metadata?.role || 'citizen'
+}
+
+// Get all users (admin only)
+app.get('/make-server-accecacf/users', async (c) => {
+  try {
+    const accessToken = c.req.header('Authorization')?.split(' ')[1]
+    const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken)
+    
+    if (!user?.id) {
+      return c.json({ error: 'Unauthorized' }, 401)
+    }
+    
+    // Check if user is admin (with temp role override support)
+    const userRole = getEffectiveUserRole(user, c.req)
+    if (userRole !== 'admin') {
+      return c.json({ error: 'Admin access required' }, 403)
+    }
+    
+    // Get users from auth service
+    const { data: authUsers, error } = await supabase.auth.admin.listUsers({
+      page: 1,
+      perPage: 1000
+    })
+    
+    if (error) {
+      console.log('List users error:', error)
+      return c.json({ error: 'Failed to fetch users' }, 500)
+    }
+    
+    const users = authUsers?.users?.map(authUser => ({
+      id: authUser.id,
+      email: authUser.email,
+      name: authUser.user_metadata?.name || 'Unknown',
+      role: authUser.user_metadata?.role || 'citizen',
+      created_at: authUser.created_at,
+      last_sign_in_at: authUser.last_sign_in_at,
+      email_confirmed_at: authUser.email_confirmed_at
+    })) || []
+    
+    return c.json({ users })
+  } catch (error) {
+    console.log('Get users error:', error)
+    return c.json({ error: 'Failed to fetch users' }, 500)
+  }
 })
+
+// Update user role (admin only)
+app.patch('/make-server-accecacf/users/:id/role', async (c) => {
+  try {
+    const accessToken = c.req.header('Authorization')?.split(' ')[1]
+    const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken)
+    
+    if (!user?.id) {
+      return c.json({ error: 'Unauthorized' }, 401)
+    }
+    
+    const userRole = getEffectiveUserRole(user, c.req)
+    if (userRole !== 'admin') {
+      return c.json({ error: 'Admin access required' }, 403)
+    }
+    
+    const userId = c.req.param('id')
+    const { role } = await c.req.json()
+    
+    if (!['citizen', 'technician', 'admin'].includes(role)) {
+      return c.json({ error: 'Invalid role' }, 400)
+    }
+    
+    const { data, error } = await supabase.auth.admin.updateUserById(userId, {
+      user_metadata: { role }
+    })
+    
+    if (error) {
+      console.log('Update user role error:', error)
+      return c.json({ error: 'Failed to update user role' }, 500)
+    }
+    
+    return c.json({ success: true, user: data.user })
+  } catch (error) {
+    console.log('Update user role error:', error)
+    return c.json({ error: 'Failed to update user role' }, 500)
+  }
+})
+
+// Get notifications for user
+app.get('/make-server-accecacf/notifications', async (c) => {
+  try {
+    const accessToken = c.req.header('Authorization')?.split(' ')[1]
+    const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken)
+    
+    if (!user?.id) {
+      return c.json({ error: 'Unauthorized' }, 401)
+    }
+    
+    const notifications = await kv.getByPrefix(`notification:${user.id}:`)
+    const sortedNotifications = notifications.sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )
+    
+    return c.json({ notifications: sortedNotifications })
+  } catch (error) {
+    console.log('Get notifications error:', error)
+    return c.json({ error: 'Failed to fetch notifications' }, 500)
+  }
+})
+
+// Send notification
+app.post('/make-server-accecacf/notifications', async (c) => {
+  try {
+    const accessToken = c.req.header('Authorization')?.split(' ')[1]
+    const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken)
+    
+    if (!user?.id) {
+      return c.json({ error: 'Unauthorized' }, 401)
+    }
+    
+    const { recipientId, title, message, type = 'info', relatedIssueId } = await c.req.json()
+    
+    const notification = {
+      id: crypto.randomUUID(),
+      recipientId,
+      title,
+      message,
+      type,
+      relatedIssueId: relatedIssueId || null,
+      senderId: user.id,
+      senderName: user.user_metadata?.name || user.email,
+      createdAt: new Date().toISOString(),
+      read: false
+    }
+    
+    await kv.set(`notification:${recipientId}:${notification.id}`, notification)
+    
+    return c.json({ success: true, notification })
+  } catch (error) {
+    console.log('Send notification error:', error)
+    return c.json({ error: 'Failed to send notification' }, 500)
+  }
+})
+
+// Mark notification as read
+app.patch('/make-server-accecacf/notifications/:id/read', async (c) => {
+  try {
+    const accessToken = c.req.header('Authorization')?.split(' ')[1]
+    const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken)
+    
+    if (!user?.id) {
+      return c.json({ error: 'Unauthorized' }, 401)
+    }
+    
+    const notificationId = c.req.param('id')
+    const notification = await kv.get(`notification:${user.id}:${notificationId}`)
+    
+    if (!notification) {
+      return c.json({ error: 'Notification not found' }, 404)
+    }
+    
+    const updatedNotification = {
+      ...notification,
+      read: true,
+      readAt: new Date().toISOString()
+    }
+    
+    await kv.set(`notification:${user.id}:${notificationId}`, updatedNotification)
+    
+    return c.json({ success: true, notification: updatedNotification })
+  } catch (error) {
+    console.log('Mark notification read error:', error)
+    return c.json({ error: 'Failed to mark notification as read' }, 500)
+  }
+})
+
+// Assign issue to technician (admin only)
+app.post('/make-server-accecacf/issues/:id/assign', async (c) => {
+  try {
+    const accessToken = c.req.header('Authorization')?.split(' ')[1]
+    const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken)
+    
+    if (!user?.id) {
+      return c.json({ error: 'Unauthorized' }, 401)
+    }
+    
+    const userRole = getEffectiveUserRole(user, c.req)
+    if (userRole !== 'admin') {
+      return c.json({ error: 'Admin access required' }, 403)
+    }
+    
+    const issueId = c.req.param('id')
+    const { technicianId, notes } = await c.req.json()
+    
+    const issue = await kv.get(`issue:${issueId}`)
+    if (!issue) {
+      return c.json({ error: 'Issue not found' }, 404)
+    }
+    
+    const updatedIssue = {
+      ...issue,
+      assignedTo: technicianId,
+      assignedBy: user.id,
+      assignedAt: new Date().toISOString(),
+      assignmentNotes: notes || '',
+      status: 'assigned',
+      updatedAt: new Date().toISOString()
+    }
+    
+    await kv.set(`issue:${issueId}`, updatedIssue)
+    
+    // Create notification for technician
+    const notification = {
+      id: crypto.randomUUID(),
+      recipientId: technicianId,
+      title: 'New Assignment',
+      message: `You have been assigned to issue: ${issue.title}`,
+      type: 'assignment',
+      relatedIssueId: issueId,
+      senderId: user.id,
+      senderName: user.user_metadata?.name || user.email,
+      createdAt: new Date().toISOString(),
+      read: false
+    }
+    
+    await kv.set(`notification:${technicianId}:${notification.id}`, notification)
+    
+    return c.json({ success: true, issue: updatedIssue })
+  } catch (error) {
+    console.log('Assign issue error:', error)
+    return c.json({ error: 'Failed to assign issue' }, 500)
+  }
+})
+
+Deno.serve(app.fetch)

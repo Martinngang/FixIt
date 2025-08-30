@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
 import { Alert, AlertDescription } from './ui/alert'
 import { Badge } from './ui/badge'
-import { Camera, MapPin, AlertCircle, CheckCircle, Upload, Loader2, Trash2, Locate, Sun, Moon } from 'lucide-react'
+import { Camera, MapPin, AlertCircle, CheckCircle, Upload, Loader2, Trash2, Locate } from 'lucide-react'
 import { projectId } from '../utils/supabase/info'
 
 const categories = [
@@ -67,8 +67,7 @@ const translations = {
     successMessage: 'Your issue has been reported successfully! You can track its progress in the "My Issues" tab.',
     photoUploadError: 'Failed to upload photo. Please try again.',
     locationError: 'Unable to get your location. Please enter it manually.',
-    locationSuccess: 'Location updated successfully!',
-    toggleTheme: 'Toggle theme'
+    locationSuccess: 'Location updated successfully!'
   },
   fr: {
     title: 'Signaler un nouveau problème',
@@ -96,8 +95,7 @@ const translations = {
     successMessage: 'Votre problème a été signalé avec succès! Vous pouvez suivre son progrès dans l\'onglet "Mes problèmes".',
     photoUploadError: 'Échec du téléchargement de la photo. Veuillez réessayer.',
     locationError: 'Impossible d\'obtenir votre position. Veuillez la saisir manuellement.',
-    locationSuccess: 'Emplacement mis à jour avec succès!',
-    toggleTheme: 'Basculer le thème'
+    locationSuccess: 'Emplacement mis à jour avec succès!'
   }
 }
 
@@ -117,35 +115,10 @@ export function ReportIssue({ session, language = 'en' }: { session: any; langua
   })
   const [photo, setPhoto] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
-  const [isDarkMode, setIsDarkMode] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
 
   const t = translations[language]
-
-  // Theme toggle logic
-  useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-    localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
-  }, [isDarkMode]);
-
-  // Initialize theme from localStorage or system preference
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme) {
-      setIsDarkMode(savedTheme === 'dark');
-    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      setIsDarkMode(true);
-    }
-  }, []);
-
-  const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode);
-  };
 
   const handlePhotoSelect = (file: File) => {
     if (file && file.type.startsWith('image/')) {
@@ -195,7 +168,6 @@ export function ReportIssue({ session, language = 'en' }: { session: any; langua
           coordinates: { lat: latitude, lng: longitude }
         }))
 
-        // Try to get address from coordinates using reverse geocoding
         try {
           const response = await fetch(
             `https://api.opencagedata.com/geocode/v1/json?q=${latitude}+${longitude}&key=demo&limit=1`
@@ -213,12 +185,10 @@ export function ReportIssue({ session, language = 'en' }: { session: any; langua
             }))
           }
           setError('')
-          // Show success message briefly
           const tempSuccess = success
           setSuccess(true)
           setTimeout(() => setSuccess(tempSuccess), 2000)
         } catch (err) {
-          // Fallback to coordinates if geocoding fails
           setFormData(prev => ({
             ...prev,
             location: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
@@ -254,7 +224,6 @@ export function ReportIssue({ session, language = 'en' }: { session: any; langua
         throw new Error('No valid session')
       }
 
-      // First, create the issue
       const issueData = {
         ...formData,
         category: categories.find(cat => cat.en === formData.category)?.en || formData.category
@@ -276,7 +245,6 @@ export function ReportIssue({ session, language = 'en' }: { session: any; langua
 
       const issueResult = await response.json()
 
-      // If there's a photo, upload it
       if (photo) {
         setPhotoUploading(true)
         try {
@@ -305,7 +273,6 @@ export function ReportIssue({ session, language = 'en' }: { session: any; langua
       }
 
       setSuccess(true)
-      // Reset form
       setFormData({
         title: '',
         description: '',
@@ -328,7 +295,7 @@ export function ReportIssue({ session, language = 'en' }: { session: any; langua
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-4 min-h-screen bg-background">
+    <>
       <style>{`
         :root {
           --background: #F8FAFC;
@@ -341,6 +308,7 @@ export function ReportIssue({ session, language = 'en' }: { session: any; langua
           --destructive: #EF4444;
           --destructive-foreground: #FFFFFF;
           --yellow-100: #FEF9C3;
+          --yellow-200: #FEF08A;
           --yellow-600: #EAB308;
           --yellow-800: #CA8A04;
           --yellow-900: #A16207;
@@ -356,7 +324,6 @@ export function ReportIssue({ session, language = 'en' }: { session: any; langua
           --green-600: #22C55E;
           --green-800: #15803D;
           --green-900: #166534;
-          --red-50: #FEF2F2;
           --red-100: #FEE2E2;
           --red-200: #FECACA;
           --red-800: #991B1B;
@@ -381,6 +348,7 @@ export function ReportIssue({ session, language = 'en' }: { session: any; langua
           --destructive: #DC2626;
           --destructive-foreground: #F1F5F9;
           --yellow-100: #FEF9C3;
+          --yellow-200: #FEF08A;
           --yellow-600: #EAB308;
           --yellow-800: #CA8A04;
           --yellow-900: #A16207;
@@ -396,7 +364,6 @@ export function ReportIssue({ session, language = 'en' }: { session: any; langua
           --green-600: #22C55E;
           --green-800: #15803D;
           --green-900: #166534;
-          --red-50: #7F1D1D;
           --red-100: #FEE2E2;
           --red-200: #FECACA;
           --red-800: #991B1B;
@@ -428,12 +395,36 @@ export function ReportIssue({ session, language = 'en' }: { session: any; langua
         .text-destructive { color: var(--destructive); }
         .bg-destructive { background-color: var(--destructive); }
         .text-destructive-foreground { color: var(--destructive-foreground); }
+        .bg-yellow-100 { background-color: var(--yellow-100); }
+        .bg-yellow-200 { background-color: var(--yellow-200); }
+        .text-yellow-600 { color: var(--yellow-600); }
+        .text-yellow-800 { color: var(--yellow-800); }
+        .bg-yellow-900\\/50 { background-color: rgba(161, 98, 7, 0.5); }
+        .text-yellow-200 { color: var(--yellow-200); }
+        .bg-blue-100 { background-color: var(--blue-100); }
+        .text-blue-600 { color: var(--blue-600); }
+        .text-blue-800 { color: var(--blue-800); }
+        .bg-blue-900\\/50 { background-color: rgba(30, 58, 138, 0.5); }
+        .text-blue-400 { color: var(--blue-400); }
         .bg-green-100 { background-color: var(--green-100); }
+        .text-green-600 { color: var(--green-600); }
         .text-green-800 { color: var(--green-800); }
-        .bg-red-50 { background-color: var(--red-50); }
+        .bg-green-900\\/50 { background-color: rgba(22, 101, 52, 0.5); }
+        .text-green-200 { color: var(--green-200); }
+        .text-green-400 { color: var(--green-400); }
+        .bg-red-100 { background-color: var(--red-100); }
         .text-red-800 { color: var(--red-800); }
+        .bg-red-900\\/50 { background-color: rgba(127, 29, 29, 0.5); }
+        .text-red-200 { color: var(--red-200); }
+        .bg-gray-100 { background-color: var(--gray-100); }
+        .bg-gray-800 { background-color: var(--gray-800); }
+        .text-gray-800 { color: var(--gray-800); }
+        .text-gray-200 { color: var(--gray-200); }
+        .text-gray-400 { color: var(--gray-400); }
+        .text-gray-500 { color: var(--gray-500); }
         .text-gray-600 { color: var(--gray-600); }
         .text-gray-700 { color: var(--gray-700); }
+        .text-gray-900 { color: var(--gray-900); }
         button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
           outline: 2px solid var(--primary);
           outline-offset: 2px;
@@ -445,48 +436,6 @@ export function ReportIssue({ session, language = 'en' }: { session: any; langua
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }
-        .h-4 { height: 1rem; }
-        .w-4 { width: 1rem; }
-        .h-5 { height: 1.25rem; }
-        .w-5 { width: 1.25rem; }
-        .h-12 { height: 3rem; }
-        .w-12 { width: 3rem; }
-        .max-w-sm { max-width: 24rem; }
-        .max-w-2xl { max-width: 42rem; }
-        .text-sm { font-size: 0.875rem; }
-        .text-xs { font-size: 0.75rem; }
-        .font-medium { font-weight: 500; }
-        .space-y-2 > * + * { margin-top: 0.5rem; }
-        .space-y-3 > * + * { margin-top: 0.75rem; }
-        .space-y-6 > * + * { margin-top: 1.5rem; }
-        .space-x-2 > * + * { margin-left: 0.5rem; }
-        .p-4 { padding: 1rem; }
-        .mb-3 { margin-bottom: 0.75rem; }
-        .mb-6 { margin-bottom: 1.5rem; }
-        .pt-4 { padding-top: 1rem; }
-        .rounded-lg { border-radius: 0.5rem; }
-        .border { border-width: 1px; }
-        .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
-        .w-full { width: 100%; }
-        .flex { display: flex; }
-        .grid { display: grid; }
-        .grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
-        .md\\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .gap-2 { gap: 0.5rem; }
-        .gap-4 { gap: 1rem; }
-        .items-center { align-items: center; }
-        .justify-between { justify-content: space-between; }
-        .justify-center { justify-content: center; }
-        .flex-1 { flex: 1 1 0%; }
-        .shrink-0 { flex-shrink: 0; }
-        .relative { position: relative; }
-        .absolute { position: absolute; }
-        .top-2 { top: 0.5rem; }
-        .right-2 { right: 0.5rem; }
-        .transition-all { transition: all 0.3s ease; }
-        .hover\\:bg-muted:hover { background-color: var(--muted); }
-        .hover\\:bg-primary\\/90:hover { background-color: rgba(59, 130, 246, 0.9); }
-        .hidden { display: none; }
         @keyframes location-pulse {
           0% { 
             background: var(--border);
@@ -531,271 +480,296 @@ export function ReportIssue({ session, language = 'en' }: { session: any; langua
           border-color: var(--border) !important;
           color: var(--muted-foreground) !important;
         }
+        .h-4 { height: 1rem; }
+        .w-4 { width: 1rem; }
+        .h-5 { height: 1.25rem; }
+        .w-5 { width: 1.25rem; }
+        .h-12 { height: 3rem; }
+        .h-48 { height: 12rem; }
+        .text-xs { font-size: 0.75rem; }
+        .text-sm { font-size: 0.875rem; }
+        .font-medium { font-weight: 500; }
+        .space-x-2 > * + * { margin-left: 0.5rem; }
+        .space-y-2 > * + * { margin-top: 0.5rem; }
+        .space-y-3 > * + * { margin-top: 0.75rem; }
+        .space-y-6 > * + * { margin-top: 1.5rem; }
+        .mb-3 { margin-bottom: 0.75rem; }
+        .mb-6 { margin-bottom: 1.5rem; }
+        .pt-4 { padding-top: 1rem; }
+        .rounded-lg { border-radius: 0.5rem; }
+        .border { border-width: 1px; }
+        .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+        .max-w-2xl { max-width: 42rem; }
+        .max-w-sm { max-width: 24rem; }
+        .w-full { width: 100%; }
+        .flex { display: flex; }
+        .flex-1 { flex: 1 1 0%; }
+        .shrink-0 { flex-shrink: 0; }
+        .items-center { align-items: center; }
+        .justify-between { justify-content: space-between; }
+        .justify-center { justify-content: center; }
+        .grid { display: grid; }
+        .grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+        .sm\\:grid-cols-2 { @media (min-width: 640px) { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        .md\\:grid-cols-2 { @media (min-width: 768px) { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        .gap-2 { gap: 0.5rem; }
+        .gap-4 { gap: 1rem; }
+        .relative { position: relative; }
+        .absolute { position: absolute; }
+        .top-2 { top: 0.5rem; }
+        .right-2 { right: 0.5rem; }
+        .object-cover { object-fit: cover; }
+        .hidden { display: none; }
+        .transition-all { transition: all 0.3s ease; }
+        .hover\\:bg-muted:hover { background-color: var(--muted); }
       `}</style>
-      
-      {/* Theme Toggle Button */}
-      <div className="flex justify-end mb-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={toggleTheme}
-          className="p-3 rounded-lg hover:bg-muted transition-all duration-300 min-w-[48px] min-h-[48px]"
-          title={t.toggleTheme}
-        >
-          {isDarkMode ? (
-            <Sun className="h-5 w-5 text-orange-400" />
-          ) : (
-            <Moon className="h-5 w-5 text-slate-600" />
-          )}
-        </Button>
-      </div>
-
-      <Card className="bg-card border-border shadow-lg">
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <MapPin className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            <span className="text-foreground">{t.title}</span>
-          </CardTitle>
-          <CardDescription className="text-muted-foreground">
-            {t.subtitle}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {error && (
-            <Alert variant="destructive" className="mb-6 bg-red-50 text-red-800">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          {success && (
-            <Alert className="mb-6 bg-green-100 text-green-800">
-              <CheckCircle className="h-4 w-4" />
-              <AlertDescription>
-                {t.successMessage}
-              </AlertDescription>
-            </Alert>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="title" className="text-foreground">{t.issueTitle} *</Label>
-              <Input
-                id="title"
-                placeholder={t.issueTitlePlaceholder}
-                value={formData.title}
-                onChange={(e) => handleInputChange('title', e.target.value)}
-                required
-                className="bg-background border-border text-foreground"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description" className="text-foreground">{t.description} *</Label>
-              <Textarea
-                id="description"
-                placeholder={t.descriptionPlaceholder}
-                rows={4}
-                value={formData.description}
-                onChange={(e) => handleInputChange('description', e.target.value)}
-                required
-                className="bg-background border-border text-foreground"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="category" className="text-foreground">{t.category} *</Label>
-                <Select
-                  value={formData.category}
-                  onValueChange={(value) => handleInputChange('category', value)}
-                  required
-                >
-                  <SelectTrigger className="bg-background border-border text-foreground">
-                    <SelectValue placeholder={t.categoryPlaceholder} />
-                  </SelectTrigger>
-                  <SelectContent className="bg-card border-border">
-                    {categories.map((category) => (
-                      <SelectItem key={category.en} value={category.en} className="text-foreground">
-                        {language === 'fr' ? category.fr : category.en}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="priority" className="text-foreground">{t.priority}</Label>
-                <Select
-                  value={formData.priority}
-                  onValueChange={(value) => handleInputChange('priority', value)}
-                >
-                  <SelectTrigger className="bg-background border-border text-foreground">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-card border-border">
-                    {priorities.map((priority) => (
-                      <SelectItem key={priority.value} value={priority.value} className="text-foreground">
-                        <div>
-                          <div className="font-medium">
-                            {language === 'fr' ? priority.fr.label : priority.en.label}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            {language === 'fr' ? priority.fr.description : priority.en.description}
-                          </div>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="location" className="text-foreground">{t.location} *</Label>
-              <div className="flex space-x-2">
-                <Input
-                  id="location"
-                  placeholder={t.locationPlaceholder}
-                  value={formData.location}
-                  onChange={(e) => handleInputChange('location', e.target.value)}
-                  required
-                  className="flex-1 bg-background border-border text-foreground"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={getCurrentLocation}
-                  disabled={locationLoading}
-                  className="shrink-0 location-button"
-                  title={t.getCurrentLocation}
-                >
-                  {locationLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Locate className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                {t.locationNote}
-              </p>
-              {formData.coordinates.lat && formData.coordinates.lng && (
-                <Badge variant="outline" className="text-xs text-foreground">
-                  GPS: {formData.coordinates.lat.toFixed(6)}, {formData.coordinates.lng.toFixed(6)}
-                </Badge>
+      <div className="min-h-screen bg-background p-4">
+        <div className="max-w-2xl mx-auto">
+          <Card className="bg-card border-border shadow-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2 text-foreground">
+                <MapPin className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <span>{t.title}</span>
+              </CardTitle>
+              <CardDescription className="text-muted-foreground">
+                {t.subtitle}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {error && (
+                <Alert variant="destructive" className="mb-6">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
               )}
-            </div>
 
-            <div className="space-y-2">
-              <Label className="text-foreground">{t.photo}</Label>
-              <p className="text-sm text-muted-foreground mb-3">
-                {t.photoNote}
-              </p>
-              
-              {!photoPreview ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleTakePhoto}
-                    className="flex items-center justify-center space-x-2 h-12 bg-background border-border text-foreground hover:bg-muted"
-                  >
-                    <Camera className="h-4 w-4" />
-                    <span>{t.takePhoto}</span>
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleUploadPhoto}
-                    className="flex items-center justify-center space-x-2 h-12 bg-background border-border text-foreground hover:bg-muted"
-                  >
-                    <Upload className="h-4 w-4" />
-                    <span>{t.uploadPhoto}</span>
-                  </Button>
+              {success && (
+                <Alert className="mb-6">
+                  <CheckCircle className="h-4 w-4" />
+                  <AlertDescription>{t.successMessage}</AlertDescription>
+                </Alert>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="title" className="text-foreground">{t.issueTitle} *</Label>
+                  <Input
+                    id="title"
+                    placeholder={t.issueTitlePlaceholder}
+                    value={formData.title}
+                    onChange={(e) => handleInputChange('title', e.target.value)}
+                    required
+                    className="bg-background border-border text-foreground"
+                  />
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="relative">
-                    <img
-                      src={photoPreview}
-                      alt="Issue photo preview"
-                      className="w-full max-w-sm h-48 object-cover rounded-lg border border-border"
+
+                <div className="space-y-2">
+                  <Label htmlFor="description" className="text-foreground">{t.description} *</Label>
+                  <Textarea
+                    id="description"
+                    placeholder={t.descriptionPlaceholder}
+                    rows={4}
+                    value={formData.description}
+                    onChange={(e) => handleInputChange('description', e.target.value)}
+                    required
+                    className="bg-background border-border text-foreground"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="category" className="text-foreground">{t.category} *</Label>
+                    <Select
+                      value={formData.category}
+                      onValueChange={(value) => handleInputChange('category', value)}
+                      required
+                    >
+                      <SelectTrigger className="bg-background border-border text-foreground">
+                        <SelectValue placeholder={t.categoryPlaceholder} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((category) => (
+                          <SelectItem key={category.en} value={category.en}>
+                            {language === 'fr' ? category.fr : category.en}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="priority" className="text-foreground">{t.priority}</Label>
+                    <Select
+                      value={formData.priority}
+                      onValueChange={(value) => handleInputChange('priority', value)}
+                    >
+                      <SelectTrigger className="bg-background border-border text-foreground">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {priorities.map((priority) => (
+                          <SelectItem key={priority.value} value={priority.value}>
+                            <div>
+                              <div className="font-medium">
+                                {language === 'fr' ? priority.fr.label : priority.en.label}
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                {language === 'fr' ? priority.fr.description : priority.en.description}
+                              </div>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="location" className="text-foreground">{t.location} *</Label>
+                  <div className="flex space-x-2">
+                    <Input
+                      id="location"
+                      placeholder={t.locationPlaceholder}
+                      value={formData.location}
+                      onChange={(e) => handleInputChange('location', e.target.value)}
+                      required
+                      className="flex-1 bg-background border-border text-foreground"
                     />
                     <Button
                       type="button"
-                      variant="destructive"
-                      size="sm"
-                      onClick={removePhoto}
-                      className="absolute top-2 right-2 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      variant="outline"
+                      onClick={getCurrentLocation}
+                      disabled={locationLoading}
+                      className="shrink-0 location-button bg-background border-border text-foreground hover:bg-muted"
+                      title={t.getCurrentLocation}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      {locationLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Locate className="h-4 w-4" />
+                      )}
                     </Button>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleTakePhoto}
-                      className="flex items-center justify-center space-x-2 bg-background border-border text-foreground hover:bg-muted"
-                    >
-                      <Camera className="h-4 w-4" />
-                      <span>{t.takePhoto}</span>
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleUploadPhoto}
-                      className="flex items-center justify-center space-x-2 bg-background border-border text-foreground hover:bg-muted"
-                    >
-                      <Upload className="h-4 w-4" />
-                      <span>{t.uploadPhoto}</span>
-                    </Button>
-                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {t.locationNote}
+                  </p>
+                  {formData.coordinates.lat && formData.coordinates.lng && (
+                    <Badge variant="outline" className="text-xs text-foreground border-border">
+                      GPS: {formData.coordinates.lat.toFixed(6)}, {formData.coordinates.lng.toFixed(6)}
+                    </Badge>
+                  )}
                 </div>
-              )}
 
-              {/* Hidden file inputs */}
-              <input
-                ref={cameraInputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handlePhotoUpload}
-                className="hidden"
-              />
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handlePhotoUpload}
-                className="hidden"
-              />
-            </div>
+                <div className="space-y-2">
+                  <Label className="text-foreground">{t.photo}</Label>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    {t.photoNote}
+                  </p>
+                  
+                  {!photoPreview ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleTakePhoto}
+                        className="flex items-center justify-center space-x-2 h-12 bg-background border-border text-foreground hover:bg-muted"
+                      >
+                        <Camera className="h-4 w-4" />
+                        <span>{t.takePhoto}</span>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleUploadPhoto}
+                        className="flex items-center justify-center space-x-2 h-12 bg-background border-border text-foreground hover:bg-muted"
+                      >
+                        <Upload className="h-4 w-4" />
+                        <span>{t.uploadPhoto}</span>
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="relative">
+                        <img
+                          src={photoPreview}
+                          alt="Issue photo preview"
+                          className="w-full max-w-sm h-48 object-cover rounded-lg border border-border"
+                        />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          onClick={removePhoto}
+                          className="absolute top-2 right-2 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleTakePhoto}
+                          className="flex items-center justify-center space-x-2 bg-background border-border text-foreground hover:bg-muted"
+                        >
+                          <Camera className="h-4 w-4" />
+                          <span>{t.takePhoto}</span>
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleUploadPhoto}
+                          className="flex items-center justify-center space-x-2 bg-background border-border text-foreground hover:bg-muted"
+                        >
+                          <Upload className="h-4 w-4" />
+                          <span>{t.uploadPhoto}</span>
+                        </Button>
+                      </div>
+                    </div>
+                  )}
 
-            <div className="flex items-center justify-between pt-4">
-              <p className="text-sm text-muted-foreground">
-                {t.requiredFields}
-              </p>
-              
-              <Button 
-                type="submit" 
-                disabled={loading || photoUploading}
-                className="bg-primary text-white hover:bg-primary/90"
-              >
-                {loading || photoUploading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    {photoUploading ? 'Uploading photo...' : t.submitting}
-                  </>
-                ) : (
-                  t.submitButton
-                )}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+                  <input
+                    ref={cameraInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                  />
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between pt-4">
+                  <p className="text-sm text-muted-foreground">
+                    {t.requiredFields}
+                  </p>
+                  
+                  <Button 
+                    type="submit" 
+                    disabled={loading || photoUploading}
+                    className="bg-primary text-destructive-foreground hover:bg-primary/90"
+                  >
+                    {loading || photoUploading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        {photoUploading ? 'Uploading photo...' : t.submitting}
+                      </>
+                    ) : (
+                      t.submitButton
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </>
   )
 }

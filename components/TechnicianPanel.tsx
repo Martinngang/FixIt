@@ -1,97 +1,96 @@
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Badge } from './ui/badge';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Textarea } from './ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Alert, AlertDescription } from './ui/alert';
-import { Skeleton } from './ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
-import {
-  Wrench,
-  MapPin,
-  Clock,
-  User,
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
+import { useState, useEffect } from 'react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
+import { Badge } from './ui/badge'
+import { Button } from './ui/button'
+import { Input } from './ui/input'
+import { Label } from './ui/label'
+import { Textarea } from './ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
+import { Alert, AlertDescription } from './ui/alert'
+import { Skeleton } from './ui/skeleton'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog'
+import { 
+  Wrench, 
+  MapPin, 
+  Clock, 
+  User, 
+  AlertTriangle, 
+  CheckCircle, 
+  XCircle, 
+  AlertCircle, 
   Calendar,
   FileText,
+  Camera,
   Navigation,
   Loader2,
   Save,
-  Eye,
-  Sun,
-  Moon
-} from 'lucide-react';
-import { projectId } from '../utils/supabase/info';
+  Eye
+} from 'lucide-react'
+import { projectId } from '../utils/supabase/info'
 
 interface Issue {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  location: string;
-  priority: 'low' | 'medium' | 'high';
-  status: 'reported' | 'in-progress' | 'resolved' | 'rejected';
-  reportedBy: string;
-  reporterName: string;
-  reportedAt: string;
-  updatedAt: string;
-  adminNote?: string;
-  technicianNote?: string;
-  photoUrl?: string;
-  coordinates?: { lat: number; lng: number };
-  assignedTechnician?: string;
-  estimatedCompletionDate?: string;
+  id: string
+  title: string
+  description: string
+  category: string
+  location: string
+  priority: 'low' | 'medium' | 'high'
+  status: 'reported' | 'in-progress' | 'resolved' | 'rejected'
+  reportedBy: string
+  reporterName: string
+  reportedAt: string
+  updatedAt: string
+  adminNote?: string
+  technicianNote?: string
+  photoUrl?: string
+  coordinates?: { lat: number; lng: number }
+  assignedTechnician?: string
+  estimatedCompletionDate?: string
 }
 
 const getStatusIcon = (status: string) => {
   switch (status) {
     case 'reported':
-      return <AlertCircle className="h-4 w-4" />;
+      return <AlertCircle className="h-4 w-4" />
     case 'in-progress':
-      return <Clock className="h-4 w-4" />;
+      return <Clock className="h-4 w-4" />
     case 'resolved':
-      return <CheckCircle className="h-4 w-4" />;
+      return <CheckCircle className="h-4 w-4" />
     case 'rejected':
-      return <XCircle className="h-4 w-4" />;
+      return <XCircle className="h-4 w-4" />
     default:
-      return <AlertCircle className="h-4 w-4" />;
+      return <AlertCircle className="h-4 w-4" />
   }
-};
+}
 
 const getStatusColor = (status: string) => {
   switch (status) {
     case 'reported':
-      return 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200';
+      return 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200'
     case 'in-progress':
-      return 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200';
+      return 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200'
     case 'resolved':
-      return 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200';
+      return 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200'
     case 'rejected':
-      return 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200';
+      return 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200'
     default:
-      return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200';
+      return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
   }
-};
+}
 
 const getPriorityColor = (priority: string) => {
   switch (priority) {
     case 'high':
-      return 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200';
+      return 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200'
     case 'medium':
-      return 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200';
+      return 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200'
     case 'low':
-      return 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200';
+      return 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200'
     default:
-      return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200';
+      return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
   }
-};
+}
 
 const translations = {
   en: {
@@ -139,8 +138,7 @@ const translations = {
     assignedTo: 'Assigned to',
     workCompleted: 'Work completed successfully',
     requiresFollowUp: 'Requires follow-up',
-    cannotComplete: 'Cannot complete - requires additional resources',
-    toggleTheme: 'Toggle theme'
+    cannotComplete: 'Cannot complete - requires additional resources'
   },
   fr: {
     technicianPanel: 'Panneau technicien',
@@ -187,92 +185,66 @@ const translations = {
     assignedTo: 'Assigné à',
     workCompleted: 'Travail terminé avec succès',
     requiresFollowUp: 'Nécessite un suivi',
-    cannotComplete: 'Impossible de terminer - nécessite des ressources supplémentaires',
-    toggleTheme: 'Basculer le thème'
+    cannotComplete: 'Impossible de terminer - nécessite des ressources supplémentaires'
   }
-};
+}
 
 export function TechnicianPanel({ session, language = 'en' }: { session: any; language?: 'en' | 'fr' }) {
-  const [issues, setIssues] = useState<Issue[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [updateLoading, setUpdateLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
-  const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false);
+  const [issues, setIssues] = useState<Issue[]>([])
+  const [loading, setLoading] = useState(true)
+  const [updateLoading, setUpdateLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+  const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null)
+  const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false)
   const [updateForm, setUpdateForm] = useState({
     status: '',
     technicianNote: '',
     estimatedCompletion: ''
-  });
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  })
 
-  const t = translations[language];
-  const technicianId = session?.user?.id || '';
-  const technicianName = session?.user?.user_metadata?.name || session?.user?.email || 'Unknown';
-
-  // Theme toggle logic
-  useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-    localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
-  }, [isDarkMode]);
-
-  // Initialize theme from localStorage or system preference
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme) {
-      setIsDarkMode(savedTheme === 'dark');
-    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      setIsDarkMode(true);
-    }
-  }, []);
-
-  const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode);
-  };
+  const t = translations[language]
+  const technicianId = session?.user?.id || ''
+  const technicianName = session?.user?.user_metadata?.name || session?.user?.email || 'Unknown'
 
   const fetchIssues = async () => {
     try {
-      setLoading(true);
-      setError('');
+      setLoading(true)
+      setError('')
 
       const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-accecacf/issues`, {
         headers: {
           'Authorization': `Bearer ${session?.access_token}`
         }
-      });
+      })
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `API error: ${response.status} ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `API error: ${response.status} ${response.statusText}`)
       }
 
-      const data = await response.json();
-      setIssues(data.issues || []);
+      const data = await response.json()
+      setIssues(data.issues || [])
     } catch (err: any) {
-      console.error('Fetch issues error:', err);
-      setError(err.message || 'Failed to load issues');
+      console.error('Fetch issues error:', err)
+      setError(err.message || 'Failed to load issues')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   useEffect(() => {
     if (session?.access_token) {
-      fetchIssues();
+      fetchIssues()
     }
-  }, [session]);
+  }, [session])
 
   const handleUpdateIssue = async () => {
-    if (!selectedIssue) return;
+    if (!selectedIssue) return
 
-    setUpdateLoading(true);
-    setError('');
-    setSuccess('');
+    setUpdateLoading(true)
+    setError('')
+    setSuccess('')
 
     try {
       const updateData = {
@@ -280,7 +252,7 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
         technicianNote: updateForm.technicianNote,
         assignedTechnician: technicianId,
         estimatedCompletionDate: updateForm.estimatedCompletion || null
-      };
+      }
 
       const response = await fetch(
         `https://${projectId}.supabase.co/functions/v1/make-server-accecacf/issues/${selectedIssue.id}/update`,
@@ -292,35 +264,37 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
           },
           body: JSON.stringify(updateData)
         }
-      );
+      )
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `API error: ${response.status} ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `API error: ${response.status} ${response.statusText}`)
       }
 
-      setSuccess(t.successUpdate);
-      setIsUpdateDialogOpen(false);
-      fetchIssues();
-      setTimeout(() => setSuccess(''), 3000);
+      setSuccess(t.successUpdate)
+      setIsUpdateDialogOpen(false)
+      fetchIssues() // Refresh the list
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccess(''), 3000)
     } catch (err: any) {
-      console.error('Update issue error:', err);
-      setError(err.message || t.errorUpdate);
+      console.error('Update issue error:', err)
+      setError(err.message || t.errorUpdate)
     } finally {
-      setUpdateLoading(false);
+      setUpdateLoading(false)
     }
-  };
+  }
 
   const handleAssignToMe = async (issue: Issue) => {
-    setUpdateLoading(true);
-    setError('');
-    setSuccess('');
+    setUpdateLoading(true)
+    setError('')
+    setSuccess('')
 
     try {
       const updateData = {
         assignedTechnician: technicianId,
         status: 'in-progress'
-      };
+      }
 
       const response = await fetch(
         `https://${projectId}.supabase.co/functions/v1/make-server-accecacf/issues/${issue.id}/update`,
@@ -332,47 +306,49 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
           },
           body: JSON.stringify(updateData)
         }
-      );
+      )
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `API error: ${response.status} ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `API error: ${response.status} ${response.statusText}`)
       }
 
-      setSuccess('Issue assigned successfully');
-      fetchIssues();
-      setTimeout(() => setSuccess(''), 3000);
+      setSuccess('Issue assigned successfully')
+      fetchIssues() // Refresh the list
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccess(''), 3000)
     } catch (err: any) {
-      console.error('Assign issue error:', err);
-      setError(err.message || 'Failed to assign issue');
+      console.error('Assign issue error:', err)
+      setError(err.message || 'Failed to assign issue')
     } finally {
-      setUpdateLoading(false);
+      setUpdateLoading(false)
     }
-  };
+  }
 
   const openUpdateDialog = (issue: Issue) => {
-    setSelectedIssue(issue);
+    setSelectedIssue(issue)
     setUpdateForm({
       status: issue.status,
       technicianNote: issue.technicianNote || '',
       estimatedCompletion: issue.estimatedCompletionDate || ''
-    });
-    setIsUpdateDialogOpen(true);
-  };
+    })
+    setIsUpdateDialogOpen(true)
+  }
 
   const openGoogleMaps = (issue: Issue) => {
     if (issue.coordinates) {
-      const url = `https://www.google.com/maps?q=${issue.coordinates.lat},${issue.coordinates.lng}`;
-      window.open(url, '_blank');
+      const url = `https://www.google.com/maps?q=${issue.coordinates.lat},${issue.coordinates.lng}`
+      window.open(url, '_blank')
     } else {
-      const encodedLocation = encodeURIComponent(issue.location);
-      const url = `https://www.google.com/maps/search/?api=1&query=${encodedLocation}`;
-      window.open(url, '_blank');
+      const encodedLocation = encodeURIComponent(issue.location)
+      const url = `https://www.google.com/maps/search/?api=1&query=${encodedLocation}`
+      window.open(url, '_blank')
     }
-  };
+  }
 
-  const myAssignments = issues.filter(issue => issue.assignedTechnician === technicianId);
-  const unassignedIssues = issues.filter(issue => !issue.assignedTechnician || issue.assignedTechnician === '');
+  const myAssignments = issues.filter(issue => issue.assignedTechnician === technicianId)
+  const unassignedIssues = issues.filter(issue => !issue.assignedTechnician || issue.assignedTechnician === '')
 
   return (
     <>
@@ -410,7 +386,12 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
           --red-900: #7F1D1D;
           --gray-100: #F3F4F6;
           --gray-200: #E5E7EB;
+          --gray-400: #9CA3AF;
+          --gray-500: #6B7280;
+          --gray-600: #4B5563;
+          --gray-700: #374151;
           --gray-800: #1F2A44;
+          --gray-900: #111827;
         }
         .dark {
           --background: #0F172A;
@@ -445,7 +426,12 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
           --red-900: #7F1D1D;
           --gray-100: #1F2A44;
           --gray-200: #2D3748;
+          --gray-400: #6B7280;
+          --gray-500: #9CA3AF;
+          --gray-600: #D1D5DB;
+          --gray-700: #E5E7EB;
           --gray-800: #D1D5DB;
+          --gray-900: #F3F4F6;
         }
         html { scroll-behavior: smooth; }
         body {
@@ -491,7 +477,12 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
         .bg-gray-800 { background-color: var(--gray-800); }
         .text-gray-800 { color: var(--gray-800); }
         .text-gray-200 { color: var(--gray-200); }
-        button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+        .text-gray-400 { color: var(--gray-400); }
+        .text-gray-500 { color: var(--gray-500); }
+        .text-gray-600 { color: var(--gray-600); }
+        .text-gray-700 { color: var(--gray-700); }
+        .text-gray-900 { color: var(--gray-900); }
+        button:focus-visible, input:focus-visible {
           outline: 2px solid var(--primary);
           outline-offset: 2px;
         }
@@ -508,12 +499,8 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
         .w-5 { width: 1.25rem; }
         .h-12 { height: 3rem; }
         .w-12 { width: 3rem; }
-        .h-16 { height: 4rem; }
-        .w-16 { width: 4rem; }
-        .w-24 { width: 6rem; }
         .text-sm { font-size: 0.875rem; }
-        .text-2xl { font-size: 1.5rem; }
-        .font-bold { font-weight: 700; }
+        .text-lg { font-size: 1.125rem; }
         .font-medium { font-weight: 500; }
         .font-semibold { font-weight: 600; }
         .space-y-2 > * + * { margin-top: 0.5rem; }
@@ -521,16 +508,18 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
         .space-y-6 > * + * { margin-top: 1.5rem; }
         .space-x-1 > * + * { margin-left: 0.25rem; }
         .space-x-2 > * + * { margin-left: 0.5rem; }
-        .p-4 { padding: 1rem; }
+        .space-x-4 > * + * { margin-left: 1rem; }
         .p-6 { padding: 1.5rem; }
-        .pb-3 { padding-bottom: 0.75rem; }
+        .py-8 { padding-top: 2rem; padding-bottom: 2rem; }
         .mb-2 { margin-bottom: 0.5rem; }
         .mb-3 { margin-bottom: 0.75rem; }
         .mb-4 { margin-bottom: 1rem; }
+        .ml-1 { margin-left: 0.25rem; }
         .ml-4 { margin-left: 1rem; }
         .rounded-lg { border-radius: 0.5rem; }
         .border { border-width: 1px; }
         .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+        .max-w-4xl { max-width: 56rem; }
         .w-full { width: 100%; }
         .grid { display: grid; }
         .grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
@@ -544,34 +533,18 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
         .justify-between { justify-content: space-between; }
         .justify-center { justify-content: center; }
         .text-center { text-align: center; }
+        .relative { position: relative; }
         .transition-all { transition: all 0.3s ease; }
         .hover\\:bg-muted:hover { background-color: var(--muted); }
         .hover\\:bg-primary\\/90:hover { background-color: rgba(59, 130, 246, 0.9); }
       `}</style>
       <div className="min-h-screen bg-background p-4">
-        <div className="max-w-6xl mx-auto">
-          {/* Theme Toggle Button */}
-          <div className="flex justify-end mb-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleTheme}
-              className="p-3 rounded-lg hover:bg-muted transition-all duration-300 min-w-[48px] min-h-[48px]"
-              title={t.toggleTheme}
-            >
-              {isDarkMode ? (
-                <Sun className="h-5 w-5 text-orange-400" />
-              ) : (
-                <Moon className="h-5 w-5 text-slate-600" />
-              )}
-            </Button>
-          </div>
-
+        <div className="max-w-4xl mx-auto">
           {loading ? (
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[...Array(3)].map((_, i) => (
-                  <Card key={i} className="bg-card border-border shadow-lg">
+                  <Card key={i} className="bg-card border-border">
                     <CardHeader className="pb-3">
                       <Skeleton className="h-4 w-24" />
                     </CardHeader>
@@ -583,7 +556,7 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
               </div>
               <div className="space-y-4">
                 {[...Array(3)].map((_, i) => (
-                  <Card key={i} className="bg-card border-border shadow-lg">
+                  <Card key={i} className="bg-card border-border">
                     <CardHeader>
                       <Skeleton className="h-6 w-48" />
                       <Skeleton className="h-4 w-32" />
@@ -595,9 +568,14 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
                 ))}
               </div>
             </div>
+          ) : error ? (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
           ) : (
             <div className="space-y-6">
-              <Card className="bg-card border-border shadow-lg">
+              <Card className="bg-card border-border">
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2 text-foreground">
                     <Wrench className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -631,27 +609,20 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
                 </CardContent>
               </Card>
 
-              {error && (
-                <Alert variant="destructive" className="bg-destructive text-destructive-foreground">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-
               {success && (
-                <Alert className="bg-green-100 text-green-800">
+                <Alert>
                   <CheckCircle className="h-4 w-4" />
                   <AlertDescription>{success}</AlertDescription>
                 </Alert>
               )}
 
               <Tabs defaultValue="assignments" className="space-y-6">
-                <TabsList className="bg-muted">
-                  <TabsTrigger value="assignments" className="flex items-center space-x-2 text-foreground data-[state=active]:bg-primary data-[state=active]:text-white">
+                <TabsList>
+                  <TabsTrigger value="assignments" className="flex items-center space-x-2">
                     <User className="h-4 w-4" />
                     <span>{t.myAssignments}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="all-issues" className="flex items-center space-x-2 text-foreground data-[state=active]:bg-primary data-[state=active]:text-white">
+                  <TabsTrigger value="all-issues" className="flex items-center space-x-2">
                     <MapPin className="h-4 w-4" />
                     <span>{t.allIssues}</span>
                   </TabsTrigger>
@@ -659,16 +630,18 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
 
                 <TabsContent value="assignments" className="space-y-4">
                   {myAssignments.length === 0 ? (
-                    <Card className="bg-card border-border shadow-lg">
+                    <Card className="bg-card border-border">
                       <CardContent className="text-center py-8">
                         <Wrench className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                         <p className="text-muted-foreground">{t.noAssignments}</p>
-                        <p className="text-sm text-muted-foreground mt-2">{t.noAssignmentsDesc}</p>
+                        <p className="text-sm text-muted-foreground mt-2">
+                          {t.noAssignmentsDesc}
+                        </p>
                       </CardContent>
                     </Card>
                   ) : (
                     myAssignments.map((issue) => (
-                      <Card key={issue.id} className="bg-card border-border shadow-lg">
+                      <Card key={issue.id} className="bg-card border-border">
                         <CardContent className="p-6">
                           <div className="flex items-start justify-between mb-4">
                             <div className="flex-1">
@@ -709,7 +682,7 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
                               <Button
                                 size="sm"
                                 onClick={() => openUpdateDialog(issue)}
-                                className="flex items-center space-x-1 bg-primary text-white hover:bg-primary/90"
+                                className="flex items-center space-x-1"
                               >
                                 <Save className="h-4 w-4" />
                                 <span>{t.updateStatus}</span>
@@ -718,7 +691,7 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
                                 size="sm"
                                 variant="outline"
                                 onClick={() => openGoogleMaps(issue)}
-                                className="flex items-center space-x-1 bg-background border-border text-foreground hover:bg-muted"
+                                className="flex items-center space-x-1"
                               >
                                 <Navigation className="h-4 w-4" />
                                 <span>{t.viewOnMap}</span>
@@ -728,7 +701,7 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
                                   size="sm"
                                   variant="outline"
                                   onClick={() => window.open(issue.photoUrl, '_blank')}
-                                  className="flex items-center space-x-1 bg-background border-border text-foreground hover:bg-muted"
+                                  className="flex items-center space-x-1"
                                 >
                                   <Eye className="h-4 w-4" />
                                   <span>{t.viewPhoto}</span>
@@ -744,16 +717,18 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
 
                 <TabsContent value="all-issues" className="space-y-4">
                   {unassignedIssues.length === 0 ? (
-                    <Card className="bg-card border-border shadow-lg">
+                    <Card className="bg-card border-border">
                       <CardContent className="text-center py-8">
                         <CheckCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                         <p className="text-muted-foreground">{t.noIssues}</p>
-                        <p className="text-sm text-muted-foreground mt-2">{t.noIssuesDesc}</p>
+                        <p className="text-sm text-muted-foreground mt-2">
+                          {t.noIssuesDesc}
+                        </p>
                       </CardContent>
                     </Card>
                   ) : (
                     unassignedIssues.map((issue) => (
-                      <Card key={issue.id} className="bg-card border-border shadow-lg">
+                      <Card key={issue.id} className="bg-card border-border">
                         <CardContent className="p-6">
                           <div className="flex items-start justify-between mb-4">
                             <div className="flex-1">
@@ -790,7 +765,7 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
                                 size="sm"
                                 onClick={() => handleAssignToMe(issue)}
                                 disabled={updateLoading}
-                                className="flex items-center space-x-1 bg-primary text-white hover:bg-primary/90"
+                                className="flex items-center space-x-1"
                               >
                                 {updateLoading ? (
                                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -803,7 +778,7 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
                                 size="sm"
                                 variant="outline"
                                 onClick={() => openGoogleMaps(issue)}
-                                className="flex items-center space-x-1 bg-background border-border text-foreground hover:bg-muted"
+                                className="flex items-center space-x-1"
                               >
                                 <Navigation className="h-4 w-4" />
                                 <span>{t.viewOnMap}</span>
@@ -813,7 +788,7 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
                                   size="sm"
                                   variant="outline"
                                   onClick={() => window.open(issue.photoUrl, '_blank')}
-                                  className="flex items-center space-x-1 bg-background border-border text-foreground hover:bg-muted"
+                                  className="flex items-center space-x-1"
                                 >
                                   <Eye className="h-4 w-4" />
                                   <span>{t.viewPhoto}</span>
@@ -830,10 +805,12 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
 
               {/* Update Issue Dialog */}
               <Dialog open={isUpdateDialogOpen} onOpenChange={setIsUpdateDialogOpen}>
-                <DialogContent className="bg-card border-border shadow-lg">
+                <DialogContent className="bg-card border-border">
                   <DialogHeader>
                     <DialogTitle className="text-foreground">{t.updateIssue}</DialogTitle>
-                    <DialogDescription className="text-muted-foreground">{selectedIssue?.title}</DialogDescription>
+                    <DialogDescription className="text-muted-foreground">
+                      {selectedIssue?.title}
+                    </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4">
                     <div className="space-y-2">
@@ -842,10 +819,10 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
                         value={updateForm.status}
                         onValueChange={(value) => setUpdateForm(prev => ({ ...prev, status: value }))}
                       >
-                        <SelectTrigger className="bg-background border-border text-foreground">
+                        <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="bg-card border-border">
+                        <SelectContent>
                           <SelectItem value="reported">{t.reported}</SelectItem>
                           <SelectItem value="in-progress">{t.inProgress}</SelectItem>
                           <SelectItem value="resolved">{t.resolved}</SelectItem>
@@ -880,14 +857,12 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
                       variant="outline"
                       onClick={() => setIsUpdateDialogOpen(false)}
                       disabled={updateLoading}
-                      className="bg-background border-border text-foreground hover:bg-muted"
                     >
                       {t.cancel}
                     </Button>
                     <Button
                       onClick={handleUpdateIssue}
                       disabled={updateLoading}
-                      className="bg-primary text-white hover:bg-primary/90"
                     >
                       {updateLoading ? (
                         <>
@@ -909,5 +884,5 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
         </div>
       </div>
     </>
-  );
+  )
 }

@@ -1,87 +1,88 @@
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Badge } from './ui/badge';
-import { Button } from './ui/button';
-import { Alert, AlertDescription } from './ui/alert';
-import { Skeleton } from './ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Progress } from './ui/progress';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { MapPin, Clock, User, AlertTriangle, CheckCircle, XCircle, AlertCircle, TrendingUp, Calendar, Activity, Sun, Moon } from 'lucide-react';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+
+import { useState, useEffect } from 'react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
+import { Badge } from './ui/badge'
+import { Button } from './ui/button'
+import { Alert, AlertDescription } from './ui/alert'
+import { Skeleton } from './ui/skeleton'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
+import { Progress } from './ui/progress'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts'
+import { MapPin, Clock, User, AlertTriangle, CheckCircle, XCircle, AlertCircle, TrendingUp, Calendar, Activity } from 'lucide-react'
+import { projectId, publicAnonKey } from '../utils/supabase/info'
 
 interface Issue {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  location: string;
-  priority: 'low' | 'medium' | 'high';
-  status: 'reported' | 'in-progress' | 'resolved' | 'rejected';
-  reportedBy: string;
-  reporterName: string;
-  reportedAt: string;
-  updatedAt: string;
-  adminNote?: string;
-  photoUrl?: string;
-  coordinates?: { lat: number; lng: number };
+  id: string
+  title: string
+  description: string
+  category: string
+  location: string
+  priority: 'low' | 'medium' | 'high'
+  status: 'reported' | 'in-progress' | 'resolved' | 'rejected'
+  reportedBy: string
+  reporterName: string
+  reportedAt: string
+  updatedAt: string
+  adminNote?: string
+  photoUrl?: string
+  coordinates?: { lat: number; lng: number }
 }
 
 interface Analytics {
-  totalIssues: number;
-  recentIssues: number;
-  resolutionRate: number;
-  avgResolutionDays: number;
-  dailyReports: Array<{ date: string; count: number }>;
-  categoryBreakdown: Record<string, number>;
-  priorityDistribution: Record<string, number>;
-  statusFlow: Record<string, number>;
+  totalIssues: number
+  recentIssues: number
+  resolutionRate: number
+  avgResolutionDays: number
+  dailyReports: Array<{ date: string; count: number }>
+  categoryBreakdown: Record<string, number>
+  priorityDistribution: Record<string, number>
+  statusFlow: Record<string, number>
 }
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8']
 
 const getStatusIcon = (status: string) => {
   switch (status) {
     case 'reported':
-      return <AlertCircle className="h-4 w-4" />;
+      return <AlertCircle className="h-4 w-4" />
     case 'in-progress':
-      return <Clock className="h-4 w-4" />;
+      return <Clock className="h-4 w-4" />
     case 'resolved':
-      return <CheckCircle className="h-4 w-4" />;
+      return <CheckCircle className="h-4 w-4" />
     case 'rejected':
-      return <XCircle className="h-4 w-4" />;
+      return <XCircle className="h-4 w-4" />
     default:
-      return <AlertCircle className="h-4 w-4" />;
+      return <AlertCircle className="h-4 w-4" />
   }
-};
+}
 
 const getStatusColor = (status: string) => {
   switch (status) {
     case 'reported':
-      return 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200';
+      return 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200'
     case 'in-progress':
-      return 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200';
+      return 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200'
     case 'resolved':
-      return 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200';
+      return 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200'
     case 'rejected':
-      return 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200';
+      return 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200'
     default:
-      return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200';
+      return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
   }
-};
+}
 
 const getPriorityColor = (priority: string) => {
   switch (priority) {
     case 'high':
-      return 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200';
+      return 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200'
     case 'medium':
-      return 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200';
+      return 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200'
     case 'low':
-      return 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200';
+      return 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200'
     default:
-      return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200';
+      return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
   }
-};
+}
 
 const translations = {
   en: {
@@ -104,8 +105,7 @@ const translations = {
     location: 'Location',
     reportedBy: 'Reported by',
     category: 'Category',
-    adminNote: 'Admin Note',
-    toggleTheme: 'Toggle theme'
+    adminNote: 'Admin Note'
   },
   fr: {
     dashboard: 'Tableau de bord',
@@ -127,112 +127,87 @@ const translations = {
     location: 'Emplacement',
     reportedBy: 'Signalé par',
     category: 'Catégorie',
-    adminNote: 'Note admin',
-    toggleTheme: 'Basculer le thème'
+    adminNote: 'Note admin'
   }
-};
+}
 
 export function Dashboard({ session, language = 'en' }: { session: any; language?: 'en' | 'fr' }) {
-  const [issues, setIssues] = useState<Issue[]>([]);
-  const [analytics, setAnalytics] = useState<Analytics | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [issues, setIssues] = useState<Issue[]>([])
+  const [analytics, setAnalytics] = useState<Analytics | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
-  const t = translations[language];
-
-  // Theme toggle logic
-  useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-    localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
-  }, [isDarkMode]);
-
-  // Initialize theme from localStorage or system preference
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme) {
-      setIsDarkMode(savedTheme === 'dark');
-    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      setIsDarkMode(true);
-    }
-  }, []);
-
-  const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode);
-  };
+  const t = translations[language]
 
   const fetchData = async () => {
     try {
-      setLoading(true);
-      setError('');
+      setLoading(true)
+      setError('')
 
+      // Fetch issues and analytics in parallel
       const [issuesResponse, analyticsResponse] = await Promise.all([
         fetch(`https://${projectId}.supabase.co/functions/v1/make-server-accecacf/issues`, {
           headers: {
             'Authorization': `Bearer ${publicAnonKey}`
           }
         }).catch(err => {
-          console.error('Issues fetch error:', err);
-          throw new Error('Failed to fetch issues');
+          console.error('Issues fetch error:', err)
+          throw new Error('Failed to fetch issues')
         }),
         fetch(`https://${projectId}.supabase.co/functions/v1/make-server-accecacf/analytics`, {
           headers: {
             'Authorization': `Bearer ${publicAnonKey}`
           }
         }).catch(err => {
-          console.error('Analytics fetch error:', err);
-          throw new Error('Failed to fetch analytics');
+          console.error('Analytics fetch error:', err)
+          throw new Error('Failed to fetch analytics')
         })
-      ]);
+      ])
 
       if (!issuesResponse.ok) {
-        const errorData = await issuesResponse.json().catch(() => ({}));
-        throw new Error(errorData.error || `Issues API error: ${issuesResponse.status} ${issuesResponse.statusText}`);
+        const errorData = await issuesResponse.json().catch(() => ({}))
+        throw new Error(errorData.error || `Issues API error: ${issuesResponse.status} ${issuesResponse.statusText}`)
       }
 
       if (!analyticsResponse.ok) {
-        const errorData = await analyticsResponse.json().catch(() => ({}));
-        throw new Error(errorData.error || `Analytics API error: ${analyticsResponse.status} ${analyticsResponse.statusText}`);
+        const errorData = await analyticsResponse.json().catch(() => ({}))
+        throw new Error(errorData.error || `Analytics API error: ${analyticsResponse.status} ${analyticsResponse.statusText}`)
       }
 
-      const issuesData = await issuesResponse.json();
-      const analyticsData = await analyticsResponse.json();
+      const issuesData = await issuesResponse.json()
+      const analyticsData = await analyticsResponse.json()
 
-      setIssues(issuesData.issues || []);
-      setAnalytics(analyticsData.analytics);
+      setIssues(issuesData.issues || [])
+      setAnalytics(analyticsData.analytics)
     } catch (err: any) {
-      console.error('Dashboard fetch error:', err);
-      setError(err.message || 'Failed to load dashboard data');
+      console.error('Dashboard fetch error:', err)
+      setError(err.message || 'Failed to load dashboard data')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    fetchData()
+  }, [])
 
   // Prepare chart data
   const categoryData = analytics ? Object.entries(analytics.categoryBreakdown).map(([name, value]) => ({
     name, value
-  })) : [];
+  })) : []
 
   const priorityData = analytics ? Object.entries(analytics.priorityDistribution).map(([name, value]) => ({
     name, value
-  })) : [];
+  })) : []
 
   const statusData = analytics ? Object.entries(analytics.statusFlow).map(([name, value]) => ({
     name, value
-  })) : [];
+  })) : []
 
   const trendData = analytics ? analytics.dailyReports.map(item => ({
     date: new Date(item.date).toLocaleDateString(),
     reports: item.count
-  })) : [];
+  })) : []
 
   return (
     <>
@@ -422,23 +397,6 @@ export function Dashboard({ session, language = 'en' }: { session: any; language
       `}</style>
       <div className="min-h-screen bg-background p-4">
         <div className="max-w-8xl mx-auto">
-          {/* Theme Toggle Button */}
-          <div className="flex justify-end mb-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleTheme}
-              className="p-3 rounded-lg hover:bg-muted transition-all duration-300 min-w-[48px] min-h-[48px]"
-              title={t.toggleTheme}
-            >
-              {isDarkMode ? (
-                <Sun className="h-5 w-5 text-orange-400" />
-              ) : (
-                <Moon className="h-5 w-5 text-slate-600" />
-              )}
-            </Button>
-          </div>
-
           {loading ? (
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -750,5 +708,5 @@ export function Dashboard({ session, language = 'en' }: { session: any; language
         </div>
       </div>
     </>
-  );
+  )
 }
