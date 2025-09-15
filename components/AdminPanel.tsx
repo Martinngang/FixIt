@@ -6,27 +6,27 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "./ui/card";
-import { Badge } from "./ui/badge";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
+} from "./ui/card.tsx";
+import { Badge } from "./ui/badge.tsx";
+import { Button } from "./ui/button.tsx";
+import { Input } from "./ui/input.tsx";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "./ui/select";
-import { Textarea } from "./ui/textarea";
-import { Label } from "./ui/label";
-import { Alert, AlertDescription } from "./ui/alert";
-import { Skeleton } from "./ui/skeleton";
+} from "./ui/select.tsx";
+import { Textarea } from "./ui/textarea.tsx";
+import { Label } from "./ui/label.tsx";
+import { Alert, AlertDescription } from "./ui/alert.tsx";
+import { Skeleton } from "./ui/skeleton.tsx";
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "./ui/tabs";
+} from "./ui/tabs.tsx";
 import {
   Dialog,
   DialogContent,
@@ -35,7 +35,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "./ui/dialog";
+} from "./ui/dialog.tsx";
 import {
   Settings,
   Clock,
@@ -54,7 +54,8 @@ import {
   Shield,
   Eye,
 } from "lucide-react";
-import { projectId } from "../utils/supabase/info";
+import { projectId } from "../utils/supabase/info.ts";
+// import './index.css';
 
 const translations = {
   en: {

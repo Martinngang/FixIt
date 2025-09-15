@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Alert, AlertDescription } from './ui/alert';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
-import { Separator } from './ui/separator';
+import { Button } from "./ui/button.tsx";
+import { Input } from "./ui/input.tsx";
+import { Label } from "./ui/label.tsx";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card.tsx";
+import { Alert, AlertDescription } from "./ui/alert.tsx";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs.tsx";
+import { Separator } from "./ui/separator.tsx";
 import { Mail, Lock, User, AlertCircle, Loader2, Eye, EyeOff, ArrowLeft, Key, Sun, Moon } from 'lucide-react';
-import { supabase } from '../utils/supabase/client';
+import { supabase } from "../utils/supabase/client.ts";
 
 const translations = {
   en: {

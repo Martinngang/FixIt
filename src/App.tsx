@@ -1,19 +1,19 @@
-
 import { useState, useEffect } from 'react'
-import { Auth } from '../components/Auth'
-import { LandingPage } from '../components/LandingPage'
-import { Dashboard } from '../components/Dashboard'
-import { ReportIssue } from '../components/ReportIssue'
-import { MyIssues } from '../components/MyIssues'
-import { AdminPanel } from '../components/AdminPanel'
-import { TechnicianPanel } from '../components/TechnicianPanel'
-import { NotificationsPanel } from '../components/NotificationsPanel'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
-import { Button } from '../components/ui/button'
-import { Badge } from '../components/ui/badge'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
+import { Auth } from '../components/Auth.tsx'
+import { LandingPage } from '../components/LandingPage.tsx'
+import { Dashboard } from '../components/Dashboard.tsx'
+import { ReportIssue } from '../components/ReportIssue.tsx'
+import { MyIssues } from '../components/MyIssues.tsx'
+import { AdminPanel } from '../components/AdminPanel.tsx'
+import { TechnicianPanel } from '../components/TechnicianPanel.tsx'
+import { NotificationsPanel } from '../components/NotificationsPanel.tsx'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs.tsx'
+import { Button } from '../components/ui/button.tsx'
+import { Badge } from '../components/ui/badge.tsx'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select.tsx'
 import { User, MapPin, Settings, LogOut, Bug, Globe, Camera, Moon, Sun, Wrench, Bell, Users, UserCog, Menu, X } from 'lucide-react'
-import { supabase } from '../utils/supabase/client'
+import { supabase } from '../utils/supabase/client.ts'
+import './index.css'
 
 const translations = {
   en: {
@@ -61,8 +61,8 @@ const translations = {
 }
 
 export default function App() {
-  const [user, setUser] = useState(null)
-  const [session, setSession] = useState(null)
+  const [user, setUser] = useState<import('@supabase/supabase-js').User | null>(null)
+  const [session, setSession] = useState<import('@supabase/supabase-js').Session | null>(null)
   const [loading, setLoading] = useState(true)
   const [language, setLanguage] = useState<'en' | 'fr'>('en')
   const [showAuth, setShowAuth] = useState(false)

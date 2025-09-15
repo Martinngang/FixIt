@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
-import { Badge } from './ui/badge'
-import { Button } from './ui/button'
-import { Input } from './ui/input'
-import { Label } from './ui/label'
-import { Textarea } from './ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
-import { Alert, AlertDescription } from './ui/alert'
-import { Skeleton } from './ui/skeleton'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card.tsx"
+import { Badge } from "./ui/badge.tsx"
+import { Button } from "./ui/button.tsx"
+import { Input } from "./ui/input.tsx"
+import { Label } from "./ui/label.tsx"
+import { Textarea } from "./ui/textarea.tsx"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select.tsx"
+import { Alert, AlertDescription } from "./ui/alert.tsx"
+import { Skeleton } from "./ui/skeleton.tsx"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs.tsx"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog.tsx"
 import { 
   Wrench, 
   MapPin, 
@@ -27,7 +27,7 @@ import {
   Save,
   Eye
 } from 'lucide-react'
-import { projectId } from '../utils/supabase/info'
+import { projectId } from "../utils/supabase/info.ts"
 
 interface Issue {
   id: string
@@ -291,20 +291,18 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
     setSuccess('')
 
     try {
-      const updateData = {
-        assignedTechnician: technicianId,
-        status: 'in-progress'
-      }
-
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-accecacf/issues/${issue.id}/update`,
+        `https://${projectId}.supabase.co/functions/v1/make-server-accecacf/issues/${issue.id}/assign-to-me`,
         {
-          method: 'PUT',
+          method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${session?.access_token}`
           },
-          body: JSON.stringify(updateData)
+          body: JSON.stringify({
+            issueId: issue.id,
+            technicianId: technicianId
+          })
         }
       )
 
@@ -313,7 +311,7 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
         throw new Error(errorData.error || `API error: ${response.status} ${response.statusText}`)
       }
 
-      setSuccess('Issue assigned successfully')
+      setSuccess(t.assignToMe + ' successful')
       fetchIssues() // Refresh the list
       
       // Clear success message after 3 seconds

@@ -1,14 +1,14 @@
 import { useState, useRef } from 'react'
-import { Button } from './ui/button'
-import { Input } from './ui/input'
-import { Label } from './ui/label'
-import { Textarea } from './ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
-import { Alert, AlertDescription } from './ui/alert'
-import { Badge } from './ui/badge'
+import { Button } from "./ui/button.tsx"
+import { Input } from "./ui/input.tsx"
+import { Label } from "./ui/label.tsx"
+import { Textarea } from "./ui/textarea.tsx"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select.tsx"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card.tsx"
+import { Alert, AlertDescription } from "./ui/alert.tsx"
+import { Badge } from "./ui/badge.tsx"
 import { Camera, MapPin, AlertCircle, CheckCircle, Upload, Loader2, Trash2, Locate } from 'lucide-react'
-import { projectId } from '../utils/supabase/info'
+import { projectId } from "../utils/supabase/info.ts"
 
 const categories = [
   { en: 'Road & Transportation', fr: 'Routes et Transport' },

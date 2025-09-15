@@ -1,15 +1,15 @@
 
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
-import { Badge } from './ui/badge'
-import { Button } from './ui/button'
-import { Alert, AlertDescription } from './ui/alert'
-import { Skeleton } from './ui/skeleton'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
-import { Progress } from './ui/progress'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card.tsx"
+import { Badge } from "./ui/badge.tsx"
+import { Button } from "./ui/button.tsx"
+import { Alert, AlertDescription } from "./ui/alert.tsx"
+import { Skeleton } from "./ui/skeleton.tsx"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs.tsx"
+import { Progress } from "./ui/progress.tsx"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts'
 import { MapPin, Clock, User, AlertTriangle, CheckCircle, XCircle, AlertCircle, TrendingUp, Calendar, Activity } from 'lucide-react'
-import { projectId, publicAnonKey } from '../utils/supabase/info'
+import { projectId, publicAnonKey } from "../utils/supabase/info.ts"
 
 interface Issue {
   id: string

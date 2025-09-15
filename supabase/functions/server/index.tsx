@@ -1,3 +1,5 @@
+import "jsr:@std/dotenv/load";
+
 import { Hono } from 'npm:hono'
 import { cors } from 'npm:hono/cors'
 import { logger } from 'npm:hono/logger'
@@ -32,6 +34,54 @@ async function initializeStorage() {
 }
 
 await initializeStorage()
+
+app.post('/make-server-accecacf/issues/:id/assign-to-me', async (c) => {
+  try {
+    const accessToken = c.req.header('Authorization')?.split(' ')[1]
+    const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken)
+    if (!user?.id) return c.json({ error: 'Unauthorized' }, 401)
+
+    const userRole = getEffectiveUserRole(user, c.req)
+    if (userRole !== 'technician') return c.json({ error: 'Technician access required' }, 403)
+
+    const issueId = c.req.param('id')
+    const issue = await kv.get(`issue:${issueId}`)
+    if (!issue) return c.json({ error: 'Issue not found' }, 404)
+    if (issue.assignedTo) return c.json({ error: 'Issue already assigned' }, 400)
+
+    const updatedIssue = {
+      ...issue,
+      assignedTo: user.id,
+      assignedBy: user.id,
+      assignedAt: new Date().toISOString(),
+      status: 'in-progress',
+      updatedAt: new Date().toISOString()
+    }
+
+    await kv.set(`issue:${issueId}`, updatedIssue)
+
+    const notification = {
+      id: crypto.randomUUID(),
+      recipientId: user.id,
+      title: 'Issue Assigned',
+      message: `You have assigned yourself to issue: ${issue.title}`,
+      type: 'task_assigned',
+      relatedIssueId: issueId,
+      senderId: user.id,
+      senderName: user.user_metadata?.name || user.email,
+      createdAt: new Date().toISOString(),
+      read: false
+    }
+
+    await kv.set(`notification:${user.id}:${notification.id}`, notification)
+
+    return c.json({ success: true, issue: updatedIssue })
+  } catch (error) {
+    console.log('Self-assign issue error:', error)
+    return c.json({ error: 'Failed to assign issue' }, 500)
+  }
+})
+
 
 // User signup
 app.post('/make-server-accecacf/signup', async (c) => {

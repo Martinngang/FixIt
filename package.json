@@ -67,7 +67,8 @@
     "vite": "^4.4.5"
   },
   "scripts": {
-  "start": "concurrently \"vite\" \"deno task dev\"",
+  "start": "concurrently \"vite\" \"npm run dev:server\"",
+  "dev:server": "deno run --allow-net --allow-env --allow-read supabase/functions/server/index.tsx",
   "build": "vite build"
   }
 

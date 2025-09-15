@@ -4,8 +4,9 @@
     "jsxImportSource": "react"
   },
   "tasks": {
-    "dev": "deno run --allow-net --allow-env index.tsx"
+  "dev": "deno run --allow-net --allow-env supabase/functions/server/index.tsx"
   },
+
   "nodeModulesDir": "auto",
   "imports": {
     "@supabase/supabase-js": "npm:@supabase/supabase-js@2.49.8"

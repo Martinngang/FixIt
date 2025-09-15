@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Button } from './ui/button'
-import { Badge } from './ui/badge'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
-import { Card, CardContent } from './ui/card'
+import { Button } from "./ui/button.tsx"
+import { Badge } from "./ui/badge.tsx"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select.tsx"
+import { Card, CardContent } from "./ui/card.tsx"
 import { 
   Camera, 
   MapPin, 
