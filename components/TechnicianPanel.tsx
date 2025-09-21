@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card.tsx"
 import { Badge } from "./ui/badge.tsx"
+import { useToast } from "./ToastContext.tsx";
 import { Button } from "./ui/button.tsx"
 import { Input } from "./ui/input.tsx"
 import { Label } from "./ui/label.tsx"
@@ -45,7 +46,7 @@ interface Issue {
   technicianNote?: string
   photoUrl?: string
   coordinates?: { lat: number; lng: number }
-  assignedTechnician?: string
+  assignedTo?: string
   estimatedCompletionDate?: string
 }
 
@@ -192,9 +193,7 @@ const translations = {
 export function TechnicianPanel({ session, language = 'en' }: { session: any; language?: 'en' | 'fr' }) {
   const [issues, setIssues] = useState<Issue[]>([])
   const [loading, setLoading] = useState(true)
-  const [updateLoading, setUpdateLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
+  const [updateLoading, setUpdateLoading] = useState<boolean | string>(false)
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null)
   const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false)
   const [updateForm, setUpdateForm] = useState({
@@ -204,13 +203,18 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
   })
 
   const t = translations[language]
+  const { addToast } = useToast();
   const technicianId = session?.user?.id || ''
   const technicianName = session?.user?.user_metadata?.name || session?.user?.email || 'Unknown'
+
+  const handleError = useCallback((message: string) => {
+    addToast(message, 'error');
+    console.error(message);
+  }, [addToast]);
 
   const fetchIssues = async () => {
     try {
       setLoading(true)
-      setError('')
 
       const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-accecacf/issues`, {
         headers: {
@@ -227,7 +231,7 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
       setIssues(data.issues || [])
     } catch (err: any) {
       console.error('Fetch issues error:', err)
-      setError(err.message || 'Failed to load issues')
+      handleError(err.message || 'Failed to load issues')
     } finally {
       setLoading(false)
     }
@@ -243,14 +247,12 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
     if (!selectedIssue) return
 
     setUpdateLoading(true)
-    setError('')
-    setSuccess('')
 
     try {
       const updateData = {
         status: updateForm.status || selectedIssue.status,
         technicianNote: updateForm.technicianNote,
-        assignedTechnician: technicianId,
+        assignedTo: technicianId,
         estimatedCompletionDate: updateForm.estimatedCompletion || null
       }
 
@@ -271,24 +273,19 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
         throw new Error(errorData.error || `API error: ${response.status} ${response.statusText}`)
       }
 
-      setSuccess(t.successUpdate)
+      addToast(t.successUpdate, 'success');
       setIsUpdateDialogOpen(false)
       fetchIssues() // Refresh the list
-      
-      // Clear success message after 3 seconds
-      setTimeout(() => setSuccess(''), 3000)
     } catch (err: any) {
       console.error('Update issue error:', err)
-      setError(err.message || t.errorUpdate)
+      handleError(err.message || t.errorUpdate)
     } finally {
       setUpdateLoading(false)
     }
   }
 
   const handleAssignToMe = async (issue: Issue) => {
-    setUpdateLoading(true)
-    setError('')
-    setSuccess('')
+    setUpdateLoading(issue.id);
 
     try {
       const response = await fetch(
@@ -311,16 +308,13 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
         throw new Error(errorData.error || `API error: ${response.status} ${response.statusText}`)
       }
 
-      setSuccess(t.assignToMe + ' successful')
+      addToast(t.assignToMe + ' successful', 'success');
       fetchIssues() // Refresh the list
-      
-      // Clear success message after 3 seconds
-      setTimeout(() => setSuccess(''), 3000)
     } catch (err: any) {
       console.error('Assign issue error:', err)
-      setError(err.message || 'Failed to assign issue')
+      handleError(err.message || 'Failed to assign issue')
     } finally {
-      setUpdateLoading(false)
+      setUpdateLoading(false);
     }
   }
 
@@ -345,197 +339,11 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
     }
   }
 
-  const myAssignments = issues.filter(issue => issue.assignedTechnician === technicianId)
-  const unassignedIssues = issues.filter(issue => !issue.assignedTechnician || issue.assignedTechnician === '')
+  const myAssignments = issues.filter(issue => issue.assignedTo === technicianId)
+  const unassignedIssues = issues.filter(issue => !issue.assignedTo || issue.assignedTo === '')
 
   return (
     <>
-      <style>{`
-        :root {
-          --background: #F8FAFC;
-          --foreground: #1E293B;
-          --card: #FFFFFF;
-          --muted-foreground: #64748B;
-          --primary: #2563EB;
-          --border: #E2E8F0;
-          --muted: #F1F5F9;
-          --destructive: #EF4444;
-          --destructive-foreground: #FFFFFF;
-          --yellow-100: #FEF9C3;
-          --yellow-200: #FEF08A;
-          --yellow-600: #EAB308;
-          --yellow-800: #CA8A04;
-          --yellow-900: #A16207;
-          --blue-100: #DBEAFE;
-          --blue-200: #BFDBFE;
-          --blue-400: #60A5FA;
-          --blue-600: #2563EB;
-          --blue-800: #1E40AF;
-          --blue-900: #1E3A8A;
-          --green-100: #DCFCE7;
-          --green-200: #BBF7D0;
-          --green-400: #4ADE80;
-          --green-600: #22C55E;
-          --green-800: #15803D;
-          --green-900: #166534;
-          --red-100: #FEE2E2;
-          --red-200: #FECACA;
-          --red-800: #991B1B;
-          --red-900: #7F1D1D;
-          --gray-100: #F3F4F6;
-          --gray-200: #E5E7EB;
-          --gray-400: #9CA3AF;
-          --gray-500: #6B7280;
-          --gray-600: #4B5563;
-          --gray-700: #374151;
-          --gray-800: #1F2A44;
-          --gray-900: #111827;
-        }
-        .dark {
-          --background: #0F172A;
-          --foreground: #F1F5F9;
-          --card: #1E293B;
-          --muted-foreground: #94A3B8;
-          --primary: #3B82F6;
-          --border: #334155;
-          --muted: #1E293B;
-          --destructive: #DC2626;
-          --destructive-foreground: #F1F5F9;
-          --yellow-100: #FEF9C3;
-          --yellow-200: #FEF08A;
-          --yellow-600: #EAB308;
-          --yellow-800: #CA8A04;
-          --yellow-900: #A16207;
-          --blue-100: #DBEAFE;
-          --blue-200: #BFDBFE;
-          --blue-400: #60A5FA;
-          --blue-600: #2563EB;
-          --blue-800: #1E40AF;
-          --blue-900: #1E3A8A;
-          --green-100: #DCFCE7;
-          --green-200: #BBF7D0;
-          --green-400: #4ADE80;
-          --green-600: #22C55E;
-          --green-800: #15803D;
-          --green-900: #166534;
-          --red-100: #FEE2E2;
-          --red-200: #FECACA;
-          --red-800: #991B1B;
-          --red-900: #7F1D1D;
-          --gray-100: #1F2A44;
-          --gray-200: #2D3748;
-          --gray-400: #6B7280;
-          --gray-500: #9CA3AF;
-          --gray-600: #D1D5DB;
-          --gray-700: #E5E7EB;
-          --gray-800: #D1D5DB;
-          --gray-900: #F3F4F6;
-        }
-        html { scroll-behavior: smooth; }
-        body {
-          background-color: var(--background);
-          color: var(--foreground);
-          transition: background-color 0.3s ease, color 0.3s ease;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-        }
-        .bg-background { background-color: var(--background); }
-        .bg-card { background-color: var(--card); }
-        .bg-muted { background-color: var(--muted); }
-        .text-foreground { color: var(--foreground); }
-        .text-muted-foreground { color: var(--muted-foreground); }
-        .text-primary { color: var(--primary); }
-        .border-border { border-color: var(--border); }
-        .bg-primary { background-color: var(--primary); }
-        .text-destructive { color: var(--destructive); }
-        .bg-destructive { background-color: var(--destructive); }
-        .text-destructive-foreground { color: var(--destructive-foreground); }
-        .bg-yellow-100 { background-color: var(--yellow-100); }
-        .bg-yellow-200 { background-color: var(--yellow-200); }
-        .text-yellow-600 { color: var(--yellow-600); }
-        .text-yellow-800 { color: var(--yellow-800); }
-        .bg-yellow-900\\/50 { background-color: rgba(161, 98, 7, 0.5); }
-        .text-yellow-200 { color: var(--yellow-200); }
-        .bg-blue-100 { background-color: var(--blue-100); }
-        .text-blue-600 { color: var(--blue-600); }
-        .text-blue-800 { color: var(--blue-800); }
-        .bg-blue-900\\/50 { background-color: rgba(30, 58, 138, 0.5); }
-        .text-blue-200 { color: var(--blue-200); }
-        .text-blue-400 { color: var(--blue-400); }
-        .bg-green-100 { background-color: var(--green-100); }
-        .text-green-600 { color: var(--green-600); }
-        .text-green-800 { color: var(--green-800); }
-        .bg-green-900\\/50 { background-color: rgba(22, 101, 52, 0.5); }
-        .text-green-200 { color: var(--green-200); }
-        .text-green-400 { color: var(--green-400); }
-        .bg-red-100 { background-color: var(--red-100); }
-        .text-red-800 { color: var(--red-800); }
-        .bg-red-900\\/50 { background-color: rgba(127, 29, 29, 0.5); }
-        .text-red-200 { color: var(--red-200); }
-        .bg-gray-100 { background-color: var(--gray-100); }
-        .bg-gray-800 { background-color: var(--gray-800); }
-        .text-gray-800 { color: var(--gray-800); }
-        .text-gray-200 { color: var(--gray-200); }
-        .text-gray-400 { color: var(--gray-400); }
-        .text-gray-500 { color: var(--gray-500); }
-        .text-gray-600 { color: var(--gray-600); }
-        .text-gray-700 { color: var(--gray-700); }
-        .text-gray-900 { color: var(--gray-900); }
-        button:focus-visible, input:focus-visible {
-          outline: 2px solid var(--primary);
-          outline-offset: 2px;
-        }
-        .animate-spin {
-          animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        .h-4 { height: 1rem; }
-        .w-4 { width: 1rem; }
-        .h-5 { height: 1.25rem; }
-        .w-5 { width: 1.25rem; }
-        .h-12 { height: 3rem; }
-        .w-12 { width: 3rem; }
-        .text-sm { font-size: 0.875rem; }
-        .text-lg { font-size: 1.125rem; }
-        .font-medium { font-weight: 500; }
-        .font-semibold { font-weight: 600; }
-        .space-y-2 > * + * { margin-top: 0.5rem; }
-        .space-y-4 > * + * { margin-top: 1rem; }
-        .space-y-6 > * + * { margin-top: 1.5rem; }
-        .space-x-1 > * + * { margin-left: 0.25rem; }
-        .space-x-2 > * + * { margin-left: 0.5rem; }
-        .space-x-4 > * + * { margin-left: 1rem; }
-        .p-6 { padding: 1.5rem; }
-        .py-8 { padding-top: 2rem; padding-bottom: 2rem; }
-        .mb-2 { margin-bottom: 0.5rem; }
-        .mb-3 { margin-bottom: 0.75rem; }
-        .mb-4 { margin-bottom: 1rem; }
-        .ml-1 { margin-left: 0.25rem; }
-        .ml-4 { margin-left: 1rem; }
-        .rounded-lg { border-radius: 0.5rem; }
-        .border { border-width: 1px; }
-        .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
-        .max-w-4xl { max-width: 56rem; }
-        .w-full { width: 100%; }
-        .grid { display: grid; }
-        .grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
-        .md\\:grid-cols-2 { @media (min-width: 768px) { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-        .md\\:grid-cols-3 { @media (min-width: 768px) { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-        .gap-4 { gap: 1rem; }
-        .flex { display: flex; }
-        .flex-col { flex-direction: column; }
-        .items-start { align-items: flex-start; }
-        .items-center { align-items: center; }
-        .justify-between { justify-content: space-between; }
-        .justify-center { justify-content: center; }
-        .text-center { text-align: center; }
-        .relative { position: relative; }
-        .transition-all { transition: all 0.3s ease; }
-        .hover\\:bg-muted:hover { background-color: var(--muted); }
-        .hover\\:bg-primary\\/90:hover { background-color: rgba(59, 130, 246, 0.9); }
-      `}</style>
       <div className="min-h-screen bg-background p-4">
         <div className="max-w-4xl mx-auto">
           {loading ? (
@@ -566,11 +374,6 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
                 ))}
               </div>
             </div>
-          ) : error ? (
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
           ) : (
             <div className="space-y-6">
               <Card className="bg-card border-border">
@@ -606,13 +409,6 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
                   </div>
                 </CardContent>
               </Card>
-
-              {success && (
-                <Alert>
-                  <CheckCircle className="h-4 w-4" />
-                  <AlertDescription>{success}</AlertDescription>
-                </Alert>
-              )}
 
               <Tabs defaultValue="assignments" className="space-y-6">
                 <TabsList>
@@ -762,7 +558,7 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
                               <Button
                                 size="sm"
                                 onClick={() => handleAssignToMe(issue)}
-                                disabled={updateLoading}
+                                disabled={updateLoading === issue.id}
                                 className="flex items-center space-x-1"
                               >
                                 {updateLoading ? (
@@ -820,7 +616,7 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="bg-card shadow-lg z-50 rounded-lg">
                           <SelectItem value="reported">{t.reported}</SelectItem>
                           <SelectItem value="in-progress">{t.inProgress}</SelectItem>
                           <SelectItem value="resolved">{t.resolved}</SelectItem>
@@ -854,13 +650,13 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
                     <Button
                       variant="outline"
                       onClick={() => setIsUpdateDialogOpen(false)}
-                      disabled={updateLoading}
+                      disabled={!!updateLoading}
                     >
                       {t.cancel}
                     </Button>
                     <Button
                       onClick={handleUpdateIssue}
-                      disabled={updateLoading}
+                      disabled={!!updateLoading}
                     >
                       {updateLoading ? (
                         <>

@@ -82,6 +82,43 @@ app.post('/make-server-accecacf/issues/:id/assign-to-me', async (c) => {
   }
 })
 
+// Update issue (technician only)
+app.put('/make-server-accecacf/issues/:id/update', async (c) => {
+  try {
+    const accessToken = c.req.header('Authorization')?.split(' ')[1]
+    const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken)
+    if (!user?.id) return c.json({ error: 'Unauthorized' }, 401)
+
+    const userRole = getEffectiveUserRole(user, c.req)
+    if (userRole !== 'technician') return c.json({ error: 'Technician access required' }, 403)
+
+    const issueId = c.req.param('id')
+    const issue = await kv.get(`issue:${issueId}`)
+    if (!issue) return c.json({ error: 'Issue not found' }, 404)
+
+    // Check if the technician is assigned to this issue
+    if (issue.assignedTo !== user.id) return c.json({ error: 'Not assigned to this issue' }, 403)
+
+    const { status, technicianNote, assignedTo, estimatedCompletionDate } = await c.req.json()
+
+    const updatedIssue = {
+      ...issue,
+      status: status || issue.status,
+      technicianNote: technicianNote !== undefined ? technicianNote : issue.technicianNote,
+      assignedTo: assignedTo || issue.assignedTo,
+      estimatedCompletionDate: estimatedCompletionDate !== undefined ? estimatedCompletionDate : issue.estimatedCompletionDate,
+      updatedAt: new Date().toISOString()
+    }
+
+    await kv.set(`issue:${issueId}`, updatedIssue)
+
+    return c.json({ success: true, issue: updatedIssue })
+  } catch (error) {
+    console.log('Update issue error:', error)
+    return c.json({ error: 'Failed to update issue' }, 500)
+  }
+})
+
 
 // User signup
 app.post('/make-server-accecacf/signup', async (c) => {
@@ -531,29 +568,55 @@ app.post('/make-server-accecacf/notifications', async (c) => {
   try {
     const accessToken = c.req.header('Authorization')?.split(' ')[1]
     const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken)
-    
+
     if (!user?.id) {
       return c.json({ error: 'Unauthorized' }, 401)
     }
-    
+
     const { recipientId, title, message, type = 'info', relatedIssueId } = await c.req.json()
-    
-    const notification = {
-      id: crypto.randomUUID(),
-      recipientId,
-      title,
-      message,
-      type,
-      relatedIssueId: relatedIssueId || null,
-      senderId: user.id,
-      senderName: user.user_metadata?.name || user.email,
-      createdAt: new Date().toISOString(),
-      read: false
+
+    // Get recipients based on recipientId
+    let recipients: string[] = []
+    if (recipientId === 'all' || recipientId === 'technicians' || recipientId === 'citizens') {
+      const { data: authUsers, error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 })
+      if (error) throw new Error('Failed to fetch users')
+      const users = authUsers?.users?.map(authUser => ({
+        id: authUser.id,
+        role: authUser.user_metadata?.role || 'citizen'
+      })) || []
+      if (recipientId === 'all') {
+        recipients = users.map(u => u.id)
+      } else if (recipientId === 'technicians') {
+        recipients = users.filter(u => u.role === 'technician').map(u => u.id)
+      } else if (recipientId === 'citizens') {
+        recipients = users.filter(u => u.role === 'citizen').map(u => u.id)
+      }
+    } else {
+      // Specific user
+      recipients = [recipientId]
     }
-    
-    await kv.set(`notification:${recipientId}:${notification.id}`, notification)
-    
-    return c.json({ success: true, notification })
+
+    // Create notification for each recipient
+    const notifications = []
+    for (const recId of recipients) {
+      const notification = {
+        id: crypto.randomUUID(),
+        recipientId: recId,
+        title,
+        message,
+        type,
+        relatedIssueId: relatedIssueId || null,
+        senderId: user.id,
+        senderName: user.user_metadata?.name || user.email,
+        createdAt: new Date().toISOString(),
+        read: false,
+        priority: 'medium' as 'low' | 'medium' | 'high'
+      }
+      await kv.set(`notification:${recId}:${notification.id}`, notification)
+      notifications.push(notification)
+    }
+
+    return c.json({ success: true, notifications })
   } catch (error) {
     console.log('Send notification error:', error)
     return c.json({ error: 'Failed to send notification' }, 500)

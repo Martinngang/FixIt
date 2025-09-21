@@ -22,14 +22,14 @@ import { projectId } from "../utils/supabase/info.ts"
 
 interface Notification {
   id: string
-  type: 'issue_assigned' | 'issue_completed' | 'issue_updated' | 'task_assigned' | 'task_completed' | 'system'
+  type: 'issue_assigned' | 'issue_completed' | 'issue_updated' | 'task_assigned' | 'task_completed' | 'system' | 'info' | 'assignment'
   title: string
   message: string
-  isRead: boolean
+  read: boolean
   createdAt: string
   relatedIssueId?: string
-  fromUserId?: string
-  fromUserName?: string
+  senderId?: string
+  senderName?: string
   priority: 'low' | 'medium' | 'high'
 }
 
@@ -205,8 +205,8 @@ export function NotificationsPanel({
         headers
       })
 
-      setNotifications(prev => 
-        prev.map(n => n.id === notificationId ? { ...n, isRead: true } : n)
+      setNotifications(prev =>
+        prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
       )
     } catch (err) {
       console.error('Mark as read error:', err)
@@ -215,15 +215,20 @@ export function NotificationsPanel({
 
   const markAsUnread = async (notificationId: string) => {
     try {
+      const headers: Record<string, string> = {
+        'Authorization': `Bearer ${session?.access_token}`
+      };
+      if (tempRole) {
+        headers['X-Temp-Role'] = tempRole;
+      }
+
       await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-accecacf/notifications/${notificationId}/unread`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${session?.access_token}`
-        }
+        method: 'PATCH', // Using PATCH for unread is more conventional than PUT
+        headers
       })
 
-      setNotifications(prev => 
-        prev.map(n => n.id === notificationId ? { ...n, isRead: false } : n)
+      setNotifications(prev =>
+        prev.map(n => n.id === notificationId ? { ...n, read: false } : n)
       )
     } catch (err) {
       console.error('Mark as unread error:', err)
@@ -232,11 +237,16 @@ export function NotificationsPanel({
 
   const deleteNotification = async (notificationId: string) => {
     try {
+      const headers: Record<string, string> = {
+        'Authorization': `Bearer ${session?.access_token}`
+      };
+      if (tempRole) {
+        headers['X-Temp-Role'] = tempRole;
+      }
+
       await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-accecacf/notifications/${notificationId}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${session?.access_token}`
-        }
+        headers
       })
 
       setNotifications(prev => prev.filter(n => n.id !== notificationId))
@@ -247,14 +257,19 @@ export function NotificationsPanel({
 
   const markAllAsRead = async () => {
     try {
+      const headers: Record<string, string> = {
+        'Authorization': `Bearer ${session?.access_token}`
+      };
+      if (tempRole) {
+        headers['X-Temp-Role'] = tempRole;
+      }
+
       await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-accecacf/notifications/mark-all-read`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${session?.access_token}`
-        }
+        method: 'PATCH', // Using PATCH is more conventional
+        headers
       })
 
-      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })))
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })))
     } catch (err) {
       console.error('Mark all as read error:', err)
     }
@@ -275,215 +290,26 @@ export function NotificationsPanel({
   const filterNotifications = (notifications: Notification[], filter: string) => {
     switch (filter) {
       case 'unread':
-        return notifications.filter(n => !n.isRead)
+        return notifications.filter(n => !n.read)
       case 'tasks':
-        return notifications.filter(n => 
-          n.type === 'task_assigned' || 
-          n.type === 'task_completed' || 
-          n.type === 'issue_assigned'
+        return notifications.filter(n =>
+          n.type === 'task_assigned' ||
+          n.type === 'task_completed' ||
+          n.type === 'issue_assigned' ||
+          n.type === 'assignment'
         )
       case 'system':
-        return notifications.filter(n => n.type === 'system')
+        return notifications.filter(n => n.type === 'system' || n.type === 'info')
       default:
         return notifications
     }
   }
 
   const filteredNotifications = filterNotifications(notifications, activeTab)
-  const unreadCount = notifications.filter(n => !n.isRead).length
+  const unreadCount = notifications.filter(n => !n.read).length
 
   return (
     <>
-      <style>{`
-        :root {
-          --background: #F8FAFC;
-          --foreground: #1E293B;
-          --card: #FFFFFF;
-          --muted-foreground: #64748B;
-          --primary: #2563EB;
-          --border: #E2E8F0;
-          --muted: #F1F5F9;
-          --destructive: #EF4444;
-          --destructive-foreground: #FFFFFF;
-          --yellow-100: #FEF9C3;
-          --yellow-200: #FEF08A;
-          --yellow-600: #EAB308;
-          --yellow-800: #CA8A04;
-          --yellow-900: #A16207;
-          --blue-100: #DBEAFE;
-          --blue-200: #BFDBFE;
-          --blue-400: #60A5FA;
-          --blue-600: #2563EB;
-          --blue-800: #1E40AF;
-          --blue-900: #1E3A8A;
-          --green-100: #DCFCE7;
-          --green-200: #BBF7D0;
-          --green-400: #4ADE80;
-          --green-600: #22C55E;
-          --green-800: #15803D;
-          --green-900: #166534;
-          --red-100: #FEE2E2;
-          --red-200: #FECACA;
-          --red-800: #991B1B;
-          --red-900: #7F1D1D;
-          --gray-100: #F3F4F6;
-          --gray-200: #E5E7EB;
-          --gray-400: #9CA3AF;
-          --gray-500: #6B7280;
-          --gray-600: #4B5563;
-          --gray-700: #374151;
-          --gray-800: #1F2A44;
-          --gray-900: #111827;
-        }
-        .dark {
-          --background: #0F172A;
-          --foreground: #F1F5F9;
-          --card: #1E293B;
-          --muted-foreground: #94A3B8;
-          --primary: #3B82F6;
-          --border: #334155;
-          --muted: #1E293B;
-          --destructive: #DC2626;
-          --destructive-foreground: #F1F5F9;
-          --yellow-100: #FEF9C3;
-          --yellow-200: #FEF08A;
-          --yellow-600: #EAB308;
-          --yellow-800: #CA8A04;
-          --yellow-900: #A16207;
-          --blue-100: #DBEAFE;
-          --blue-200: #BFDBFE;
-          --blue-400: #60A5FA;
-          --blue-600: #2563EB;
-          --blue-800: #1E40AF;
-          --blue-900: #1E3A8A;
-          --green-100: #DCFCE7;
-          --green-200: #BBF7D0;
-          --green-400: #4ADE80;
-          --green-600: #22C55E;
-          --green-800: #15803D;
-          --green-900: #166534;
-          --red-100: #FEE2E2;
-          --red-200: #FECACA;
-          --red-800: #991B1B;
-          --red-900: #7F1D1D;
-          --gray-100: #1F2A44;
-          --gray-200: #2D3748;
-          --gray-400: #6B7280;
-          --gray-500: #9CA3AF;
-          --gray-600: #D1D5DB;
-          --gray-700: #E5E7EB;
-          --gray-800: #D1D5DB;
-          --gray-900: #F3F4F6;
-        }
-        html { scroll-behavior: smooth; }
-        body {
-          background-color: var(--background);
-          color: var(--foreground);
-          transition: background-color 0.3s ease, color 0.3s ease;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-        }
-        .bg-background { background-color: var(--background); }
-        .bg-card { background-color: var(--card); }
-        .bg-muted { background-color: var(--muted); }
-        .text-foreground { color: var(--foreground); }
-        .text-muted-foreground { color: var(--muted-foreground); }
-        .text-primary { color: var(--primary); }
-        .border-border { border-color: var(--border); }
-        .bg-primary { background-color: var(--primary); }
-        .text-destructive { color: var(--destructive); }
-        .bg-destructive { background-color: var(--destructive); }
-        .text-destructive-foreground { color: var(--destructive-foreground); }
-        .bg-yellow-100 { background-color: var(--yellow-100); }
-        .bg-yellow-200 { background-color: var(--yellow-200); }
-        .text-yellow-600 { color: var(--yellow-600); }
-        .text-yellow-800 { color: var(--yellow-800); }
-        .bg-yellow-900\\/50 { background-color: rgba(161, 98, 7, 0.5); }
-        .text-yellow-200 { color: var(--yellow-200); }
-        .bg-blue-50 { background-color: #EFF6FF; }
-        .bg-blue-100 { background-color: var(--blue-100); }
-        .bg-blue-950\\/50 { background-color: rgba(23, 37, 84, 0.5); }
-        .text-blue-600 { color: var(--blue-600); }
-        .text-blue-800 { color: var(--blue-800); }
-        .bg-blue-900\\/50 { background-color: rgba(30, 58, 138, 0.5); }
-        .text-blue-200 { color: var(--blue-200); }
-        .text-blue-400 { color: var(--blue-400); }
-        .border-blue-200 { border-color: var(--blue-200); }
-        .border-blue-800 { border-color: var(--blue-800); }
-        .bg-green-100 { background-color: var(--green-100); }
-        .text-green-600 { color: var(--green-600); }
-        .text-green-800 { color: var(--green-800); }
-        .bg-green-900\\/50 { background-color: rgba(22, 101, 52, 0.5); }
-        .text-green-200 { color: var(--green-200); }
-        .text-green-400 { color: var(--green-400); }
-        .bg-red-100 { background-color: var(--red-100); }
-        .text-red-800 { color: var(--red-800); }
-        .bg-red-900\\/50 { background-color: rgba(127, 29, 29, 0.5); }
-        .text-red-200 { color: var(--red-200); }
-        .bg-gray-100 { background-color: var(--gray-100); }
-        .bg-gray-800 { background-color: var(--gray-800); }
-        .text-gray-800 { color: var(--gray-800); }
-        .text-gray-200 { color: var(--gray-200); }
-        .text-gray-400 { color: var(--gray-400); }
-        .text-gray-500 { color: var(--gray-500); }
-        .text-gray-600 { color: var(--gray-600); }
-        .text-gray-700 { color: var(--gray-700); }
-        .text-gray-900 { color: var(--gray-900); }
-        button:focus-visible, input:focus-visible {
-          outline: 2px solid var(--primary);
-          outline-offset: 2px;
-        }
-        .h-3 { height: 0.75rem; }
-        .w-3 { width: 0.75rem; }
-        .h-4 { height: 1rem; }
-        .w-4 { width: 1rem; }
-        .h-5 { height: 1.25rem; }
-        .w-5 { width: 1.25rem; }
-        .h-8 { height: 2rem; }
-        .w-8 { width: 2rem; }
-        .h-12 { height: 3rem; }
-        .w-12 { width: 3rem; }
-        .text-xs { font-size: 0.75rem; }
-        .text-sm { font-size: 0.875rem; }
-        .text-lg { font-size: 1.125rem; }
-        .font-medium { font-weight: 500; }
-        .font-semibold { font-weight: 600; }
-        .space-x-1 > * + * { margin-left: 0.25rem; }
-        .space-x-2 > * + * { margin-left: 0.5rem; }
-        .space-x-3 > * + * { margin-left: 0.75rem; }
-        .space-x-4 > * + * { margin-left: 1rem; }
-        .space-y-2 > * + * { margin-top: 0.5rem; }
-        .space-y-3 > * + * { margin-top: 0.75rem; }
-        .space-y-4 > * + * { margin-top: 1rem; }
-        .space-y-6 > * + * { margin-top: 1.5rem; }
-        .p-0 { padding: 0; }
-        .p-4 { padding: 1rem; }
-        .py-8 { padding-top: 2rem; padding-bottom: 2rem; }
-        .mb-1 { margin-bottom: 0.25rem; }
-        .mb-2 { margin-bottom: 0.5rem; }
-        .mb-4 { margin-bottom: 1rem; }
-        .mb-6 { margin-bottom: 1.5rem; }
-        .ml-2 { margin-left: 0.5rem; }
-        .ml-4 { margin-left: 1rem; }
-        .mt-1 { margin-top: 0.25rem; }
-        .mt-2 { margin-top: 0.5rem; }
-        .rounded-full { border-radius: 9999px; }
-        .rounded-lg { border-radius: 0.5rem; }
-        .border { border-width: 1px; }
-        .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
-        .max-w-4xl { max-width: 56rem; }
-        .w-full { width: 100%; }
-        .min-w-0 { min-width: 0; }
-        .flex { display: flex; }
-        .flex-1 { flex: 1 1 0%; }
-        .flex-shrink-0 { flex-shrink: 0; }
-        .items-start { align-items: flex-start; }
-        .items-center { align-items: center; }
-        .justify-between { justify-content: space-between; }
-        .justify-center { justify-content: center; }
-        .text-center { text-align: center; }
-        .transition-colors { transition: color 0.3s ease, background-color 0.3s ease; }
-        .hover\\:text-destructive:hover { color: var(--destructive); }
-      `}</style>
       <div className="min-h-screen bg-background p-4">
         <div className="max-w-4xl mx-auto">
           {loading ? (
@@ -588,8 +414,8 @@ export function NotificationsPanel({
                             <div
                               key={notification.id}
                               className={`p-4 rounded-lg border ${
-                                notification.isRead 
-                                  ? 'bg-background border-border' 
+                                notification.read
+                                  ? 'bg-background border-border'
                                   : 'bg-blue-50 dark:bg-blue-950/50 border-blue-200 dark:border-blue-800'
                               } transition-colors`}
                             >
@@ -607,7 +433,7 @@ export function NotificationsPanel({
                                         <Badge className={getPriorityColor(notification.priority)}>
                                           {notification.priority}
                                         </Badge>
-                                        {!notification.isRead && (
+                                        {!notification.read && (
                                           <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
                                         )}
                                       </div>
@@ -619,10 +445,10 @@ export function NotificationsPanel({
                                           <Calendar className="h-3 w-3" />
                                           <span>{getTimeAgo(notification.createdAt)}</span>
                                         </div>
-                                        {notification.fromUserName && (
+                                        {notification.senderName && (
                                           <div className="flex items-center space-x-1">
                                             <User className="h-3 w-3" />
-                                            <span>{t.from} {notification.fromUserName}</span>
+                                            <span>{t.from} {notification.senderName}</span>
                                           </div>
                                         )}
                                         {notification.relatedIssueId && (
@@ -648,10 +474,10 @@ export function NotificationsPanel({
                                         variant="ghost"
                                         size="sm"
                                         className="h-8 w-8 p-0 bg-background border-border text-foreground hover:bg-muted"
-                                        onClick={() => notification.isRead ? markAsUnread(notification.id) : markAsRead(notification.id)}
-                                        title={notification.isRead ? t.markAsUnread : t.markAsRead}
+                                        onClick={() => notification.read ? markAsUnread(notification.id) : markAsRead(notification.id)}
+                                        title={notification.read ? t.markAsUnread : t.markAsRead}
                                       >
-                                        {notification.isRead ? (
+                                        {notification.read ? (
                                           <EyeOff className="h-4 w-4" />
                                         ) : (
                                           <Eye className="h-4 w-4" />

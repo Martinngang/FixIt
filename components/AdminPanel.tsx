@@ -1,5 +1,6 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useToast } from "./ToastContext.tsx";
 import {
   Card,
   CardContent,
@@ -346,8 +347,6 @@ export function AdminPanel({
   const [technicians, setTechnicians] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [usersLoading, setUsersLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [updateLoading, setUpdateLoading] = useState("");
   const [selectedIssue, setSelectedIssue] =
     useState<Issue | null>(null);
@@ -385,11 +384,16 @@ export function AdminPanel({
   });
 
   const t = translations[language];
+  const { addToast } = useToast();
+
+  const handleError = useCallback((message: string) => {
+    addToast(message, 'error');
+    console.error(message);
+  }, [addToast]);
 
   const fetchIssues = async () => {
     try {
       setLoading(true);
-      setError("");
 
       if (!session?.access_token) {
         throw new Error("No valid session");
@@ -416,7 +420,7 @@ export function AdminPanel({
       setIssues(data.issues || []);
     } catch (err: any) {
       console.error("Fetch issues error:", err);
-      setError(err.message || "Failed to load issues");
+      handleError(err.message || "Failed to load issues");
     } finally {
       setLoading(false);
     }
@@ -425,7 +429,6 @@ export function AdminPanel({
   const fetchUsers = async () => {
     try {
       setUsersLoading(true);
-      setError("");
 
       const headers: Record<string, string> = {
         Authorization: `Bearer ${session.access_token}`,
@@ -457,7 +460,7 @@ export function AdminPanel({
       );
     } catch (err: any) {
       console.error("Fetch users error:", err);
-      setError(err.message || "Failed to load users");
+      handleError(err.message || "Failed to load users");
     } finally {
       setUsersLoading(false);
     }
@@ -494,11 +497,10 @@ export function AdminPanel({
       setSelectedIssue(null);
       setNewStatus("");
       setAdminNote("");
-      setSuccess("Issue updated successfully");
-      setTimeout(() => setSuccess(""), 3000);
+      addToast("Issue updated successfully", 'success');
     } catch (err: any) {
       console.error("Update issue error:", err);
-      setError(err.message || "Failed to update issue");
+      handleError(err.message || "Failed to update issue");
     } finally {
       setUpdateLoading("");
     }
@@ -542,11 +544,10 @@ export function AdminPanel({
       setAssignDialogOpen(false);
       setSelectedIssue(null);
       setSelectedTechnician("");
-      setSuccess("Issue assigned successfully");
-      setTimeout(() => setSuccess(""), 3000);
+      addToast("Issue assigned successfully", 'success');
     } catch (err: any) {
       console.error("Assign technician error:", err);
-      setError(err.message || "Failed to assign technician");
+      handleError(err.message || "Failed to assign technician");
     } finally {
       setUpdateLoading("");
     }
@@ -591,13 +592,11 @@ export function AdminPanel({
         role: "citizen",
         status: "active",
       });
-      setSuccess(
-        `User ${selectedUser ? "updated" : "created"} successfully`,
-      );
-      setTimeout(() => setSuccess(""), 3000);
+      addToast(`User ${selectedUser ? "updated" : "created"} successfully`, 'success');
+
     } catch (err: any) {
       console.error("Save user error:", err);
-      setError(err.message || "Failed to save user");
+      handleError(err.message || "Failed to save user");
     } finally {
       setUpdateLoading("");
     }
@@ -627,11 +626,10 @@ export function AdminPanel({
       await fetchUsers();
       setDeleteDialogOpen(false);
       setSelectedUser(null);
-      setSuccess("User deleted successfully");
-      setTimeout(() => setSuccess(""), 3000);
+      addToast("User deleted successfully", 'success');
     } catch (err: any) {
       console.error("Delete user error:", err);
-      setError(err.message || "Failed to delete user");
+      handleError(err.message || "Failed to delete user");
     } finally {
       setUpdateLoading("");
     }
@@ -656,8 +654,7 @@ export function AdminPanel({
           method: "POST",
           headers,
           body: JSON.stringify({
-            recipientId:
-              notificationForm.specificUserId || "all",
+            recipientId: notificationForm.recipientType,
             title: notificationForm.title,
             message: notificationForm.message,
             type: "info",
@@ -680,11 +677,10 @@ export function AdminPanel({
         specificUserId: "",
         priority: "medium",
       });
-      setSuccess(t.notificationSent);
-      setTimeout(() => setSuccess(""), 3000);
+      addToast(t.notificationSent, 'success');
     } catch (err: any) {
       console.error("Send notification error:", err);
-      setError(err.message || "Failed to send notification");
+      handleError(err.message || "Failed to send notification");
     } finally {
       setUpdateLoading("");
     }
@@ -888,20 +884,6 @@ export function AdminPanel({
       <div className="min-h-screen bg-background p-4">
         <div className="max-w-4xl mx-auto">
           <div className="space-y-6">
-            {error && (
-              <Alert variant="destructive" className="bg-destructive text-destructive-foreground">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-
-            {success && (
-              <Alert className="bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200">
-                <CheckCircle className="h-4 w-4" />
-                <AlertDescription>{success}</AlertDescription>
-              </Alert>
-            )}
-
             <Tabs defaultValue={defaultView} className="space-y-6">
               <TabsList className="bg-card border-border">
                 <TabsTrigger
@@ -1075,7 +1057,7 @@ export function AdminPanel({
                                           <SelectTrigger className="bg-background border-border text-foreground">
                                             <SelectValue placeholder={t.selectStatus} />
                                           </SelectTrigger>
-                                          <SelectContent className="bg-card border-border">
+                                          <SelectContent className="bg-card shadow-lg z-50 rounded-lg">
                                             {statusOptions.map((status) => (
                                               <SelectItem
                                                 key={status.value}
@@ -1189,7 +1171,7 @@ export function AdminPanel({
                                             <SelectTrigger className="bg-background border-border text-foreground">
                                               <SelectValue placeholder={t.selectTechnician} />
                                             </SelectTrigger>
-                                            <SelectContent className="bg-card border-border">
+                                            <SelectContent className="bg-card shadow-lg z-50 rounded-lg">
                                               {technicians.map((tech) => (
                                                 <SelectItem key={tech.id} value={tech.id} className="text-foreground">
                                                   <div className="flex items-center space-x-2">
@@ -1561,7 +1543,7 @@ export function AdminPanel({
                       <SelectTrigger className="bg-background border-border text-foreground">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-card border-border">
+                      <SelectContent className="bg-card shadow-lg z-50 rounded-lg">
                         <SelectItem value="citizen" className="text-foreground">
                           {t.citizen}
                         </SelectItem>
@@ -1593,7 +1575,7 @@ export function AdminPanel({
                       <SelectTrigger className="bg-background border-border text-foreground">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-card border-border">
+                      <SelectContent className="bg-card shadow-lg z-50 rounded-lg">
                         <SelectItem value="active" className="text-foreground">
                           {t.active}
                         </SelectItem>
@@ -1756,7 +1738,7 @@ export function AdminPanel({
                       <SelectTrigger className="bg-background border-border text-foreground">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-card border-border">
+                      <SelectContent className="bg-card shadow-lg z-50 rounded-lg">
                         <SelectItem value="all" className="text-foreground">
                           {t.allUsers}
                         </SelectItem>
@@ -1788,7 +1770,7 @@ export function AdminPanel({
                       <SelectTrigger className="bg-background border-border text-foreground">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-card border-border">
+                      <SelectContent className="bg-card shadow-lg z-50 rounded-lg">
                         <SelectItem value="low" className="text-foreground">{t.low}</SelectItem>
                         <SelectItem value="medium" className="text-foreground">
                           {t.medium}

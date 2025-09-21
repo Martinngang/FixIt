@@ -92,7 +92,7 @@ const translations = {
   }
 };
 
-export function Auth({ language = 'en' }: { language?: 'en' | 'fr' }) {
+export function Auth({ language = 'en', onAuthSuccess }: { language?: 'en' | 'fr', onAuthSuccess?: () => void }) {
   const [currentView, setCurrentView] = useState<'signin' | 'signup' | 'forgot'>('signin');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -204,6 +204,7 @@ export function Auth({ language = 'en' }: { language?: 'en' | 'fr' }) {
 
         if (data?.user) {
           setError('');
+          onAuthSuccess?.();
         }
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -217,6 +218,7 @@ export function Auth({ language = 'en' }: { language?: 'en' | 'fr' }) {
 
         if (data?.user) {
           setError('');
+          onAuthSuccess?.();
         }
       }
     } catch (err: any) {

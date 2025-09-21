@@ -7,17 +7,18 @@ import { MyIssues } from '../components/MyIssues.tsx'
 import { AdminPanel } from '../components/AdminPanel.tsx'
 import { TechnicianPanel } from '../components/TechnicianPanel.tsx'
 import { NotificationsPanel } from '../components/NotificationsPanel.tsx'
+import { ToastProvider, useToast } from '../components/ToastContext.tsx'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs.tsx'
 import { Button } from '../components/ui/button.tsx'
 import { Badge } from '../components/ui/badge.tsx'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select.tsx'
-import { User, MapPin, Settings, LogOut, Bug, Globe, Camera, Moon, Sun, Wrench, Bell, Users, UserCog, Menu, X } from 'lucide-react'
+import { User, MapPin, Settings, LogOut, Globe, Camera, Moon, Sun, Wrench, Bell, Users, UserCog, Menu, X } from 'lucide-react'
 import { supabase } from '../utils/supabase/client.ts'
-import './index.css'
+// import './index.css'
 
 const translations = {
   en: {
-    appTitle: 'FixIt',
+    appTitle: 'CIRT',
     appSubtitle: 'Civic Issue Reporting',
     dashboard: 'Dashboard',
     reportIssue: 'Report Issue',
@@ -28,7 +29,7 @@ const translations = {
     userManagement: 'Users',
     notifications: 'Notifications',
     signOut: 'Sign Out',
-    loading: 'Loading FixIt...',
+    loading: 'Loading CIRT...',
     toggleTheme: 'Toggle theme',
     client: 'Client',
     citizen: 'Citizen',
@@ -38,7 +39,7 @@ const translations = {
     roleUpdated: 'Role updated successfully'
   },
   fr: {
-    appTitle: 'FixIt',
+    appTitle: 'CIRT',
     appSubtitle: 'Signalement de problèmes civiques',
     dashboard: 'Tableau de bord',
     reportIssue: 'Signaler un problème',
@@ -49,7 +50,7 @@ const translations = {
     userManagement: 'Utilisateurs',
     notifications: 'Notifications',
     signOut: 'Déconnexion',
-    loading: 'Chargement de FixIt...',
+    loading: 'Chargement de CIRT...',
     toggleTheme: 'Basculer le thème',
     client: 'Client',
     citizen: 'Citoyen',
@@ -60,7 +61,7 @@ const translations = {
   }
 }
 
-export default function App() {
+function AppContent() {
   const [user, setUser] = useState<import('@supabase/supabase-js').User | null>(null)
   const [session, setSession] = useState<import('@supabase/supabase-js').Session | null>(null)
   const [loading, setLoading] = useState(true)
@@ -69,6 +70,7 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [tempRole, setTempRole] = useState<string | null>(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { addToast } = useToast();
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme')
@@ -129,14 +131,7 @@ export default function App() {
 
   const handleRoleChange = async (newRole: string) => {
     setTempRole(newRole)
-    
-    const message = document.createElement('div')
-    message.textContent = translations[language].roleUpdated
-    message.className = 'fixed top-4 right-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg z-50'
-    document.body.appendChild(message)
-    setTimeout(() => {
-      document.body.removeChild(message)
-    }, 2000)
+    addToast(translations[language].roleUpdated, 'success');
   }
 
   const t = translations[language]
@@ -343,9 +338,7 @@ export default function App() {
               <div className="p-6">
                 <div className="flex justify-between items-center mb-6">
                   <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-green-600 rounded-xl flex items-center justify-center">
-                      <Bug className="h-6 w-6 text-white" />
-                    </div>
+                    <img src="/logo.svg" alt="CIRT Logo" className="h-10 w-10" />
                     <div>
                       <h1 className="text-xl text-foreground">{t.appTitle}</h1>
                       <p className="text-sm text-muted-foreground">{t.appSubtitle}</p>
@@ -371,7 +364,7 @@ export default function App() {
                     </Button>
                   </div>
                 </div>
-                <Auth language={language} />
+                <Auth language={language} onAuthSuccess={() => addToast('Successfully signed in!', 'success')} />
               </div>
             </div>
           </div>
@@ -510,7 +503,7 @@ export default function App() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
               <div className="flex items-center space-x-3">
-                <Bug className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+                <img src="/logo.svg" alt="CIRT Logo" className="h-8 w-8" />
                 <div>
                   <h1 className="text-xl font-bold text-foreground">{t.appTitle}</h1>
                   <p className="text-sm text-muted-foreground">{t.appSubtitle}</p>
@@ -534,7 +527,7 @@ export default function App() {
                     <UserCog className="h-4 w-4 mr-2" />
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-card shadow-lg z-50 rounded-lg">
                     <SelectItem value="citizen">
                       <div className="flex items-center space-x-2">
                         <User className="h-4 w-4" />
@@ -561,7 +554,7 @@ export default function App() {
                     <Globe className="h-4 w-4 mr-2" />
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-card shadow-lg z-50 rounded-lg">
                     <SelectItem value="en">English</SelectItem>
                     <SelectItem value="fr">Français</SelectItem>
                   </SelectContent>
@@ -609,7 +602,7 @@ export default function App() {
 
             {/* Mobile Menu */}
             {mobileMenuOpen && (
-              <div className="md:hidden bg-card border-t border-border px-6 py-4">
+              <div className="md:hidden bg-card border-t border-border px-6 py-4 shadow-lg rounded-b-lg z-50">
                 <div className="flex flex-col space-y-4">
                   <Button 
                     variant="ghost"
@@ -625,7 +618,7 @@ export default function App() {
                       <UserCog className="h-4 w-4 mr-2" />
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-card shadow-lg z-50 rounded-lg">
                       <SelectItem value="citizen">
                         <div className="flex items-center space-x-2">
                           <User className="h-4 w-4" />
@@ -652,7 +645,7 @@ export default function App() {
                       <Globe className="h-4 w-4 mr-2" />
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-card shadow-lg z-50 rounded-lg">
                       <SelectItem value="en">English</SelectItem>
                       <SelectItem value="fr">Français</SelectItem>
                     </SelectContent>
@@ -762,4 +755,12 @@ export default function App() {
       </div>
     </>
   )
+}
+
+export default function App() {
+  return (
+    <ToastProvider>
+      <AppContent />
+    </ToastProvider>
+  );
 }

@@ -49,7 +49,7 @@ const translations = {
     issuesReported: 'Issues Reported',
     issuesResolved: 'Issues Resolved',
     activeCommunities: 'Active Communities',
-    commonIssues: 'Common Issues We Help Fix',
+    commonIssues: 'Common Issues We Help ',
     roads: 'Road Issues',
     roadsDesc: 'Potholes, damaged roads, missing signs',
     lighting: 'Street Lighting',
@@ -58,7 +58,7 @@ const translations = {
     wasteDesc: 'Overflowing bins, illegal dumping, collection issues',
     drainage: 'Drainage Problems',
     drainageDesc: 'Flooding, blocked drains, poor drainage',
-    howItWorksTitle: 'How FixIt Works',
+    howItWorksTitle: 'How CIRT Works',
     howItWorksSubtitle: 'Reporting community issues has never been easier with our streamlined process',
     step1Title: 'Snap a Photo',
     step1Desc: 'Take a photo of the issue you want to report using our smart camera',
@@ -66,7 +66,7 @@ const translations = {
     step2Desc: 'Add details and location using GPS or manual entry for precise tracking',
     step3Title: 'Get Updates',
     step3Desc: 'Track progress and receive real-time notifications on resolution status',
-    featuresTitle: 'Why Choose FixIt?',
+    featuresTitle: 'Why Choose ',
     featuresSubtitle: 'Built for communities, trusted by authorities, designed for impact',
     feature1Title: 'Real-time Tracking',
     feature1Desc: 'Monitor your reports from submission to resolution with live updates',
@@ -77,21 +77,21 @@ const translations = {
     feature4Title: 'Mobile Optimized',
     feature4Desc: 'Report issues anywhere with our responsive mobile-first design',
     testimonialsTitle: 'What Our Community Says',
-    testimonial1: '"FixIt helped me report a dangerous pothole that was fixed within a week. Amazing response time!"',
+    testimonial1: '"CIRT helped me report a dangerous pothole that was fixed within a week. Amazing response time!"',
     testimonial1Author: 'Sarah Johnson',
     testimonial1Role: 'Community Member',
-    testimonial2: '"As a city official, FixIt has streamlined our issue tracking and improved citizen engagement significantly."',
+    testimonial2: '"As a city official, CIRT has streamlined our issue tracking and improved citizen engagement significantly."',
     testimonial2Author: 'Mayor David Chen',
     testimonial2Role: 'City of Toronto',
     testimonial3: '"The app is so easy to use. I\'ve reported several issues in my neighborhood and they all got resolved."',
     testimonial3Author: 'Fatima Al-Rashid',
     testimonial3Role: 'Resident',
     trustTitle: 'Trusted by Cities Across the Globe',
-    trustSubtitle: 'Join thousands of communities already using FixIt',
+    trustSubtitle: 'Join thousands of communities already using CIRT',
     ctaTitle: 'Ready to Fix Your City?',
     ctaSubtitle: 'Join thousands of citizens making their communities better',
     ctaButton: 'Start Reporting Issues',
-    footerText: '© 2025 FixIt. Making communities better, one issue at a time.',
+    footerText: '© 2025 CIRT. Making communities better, one issue at a time.',
     privacy: 'Privacy Policy',
     terms: 'Terms of Service',
     contact: 'Contact Us'
@@ -120,7 +120,7 @@ const translations = {
     wasteDesc: 'Poubelles qui débordent, décharges illégales, problèmes de collecte',
     drainage: 'Problèmes de drainage',
     drainageDesc: 'Inondations, drains bloqués, mauvais drainage',
-    howItWorksTitle: 'Comment fonctionne FixIt',
+    howItWorksTitle: 'Comment fonctionne',
     howItWorksSubtitle: 'Signaler les problèmes communautaires n\'a jamais été aussi facile avec notre processus simplifié',
     step1Title: 'Prenez une photo',
     step1Desc: 'Prenez une photo du problème que vous voulez signaler avec notre caméra intelligente',
@@ -128,7 +128,7 @@ const translations = {
     step2Desc: 'Ajoutez des détails et la localisation via GPS ou saisie manuelle pour un suivi précis',
     step3Title: 'Recevez des mises à jour',
     step3Desc: 'Suivez les progrès et recevez des notifications en temps réel sur l\'état de la résolution',
-    featuresTitle: 'Pourquoi choisir FixIt ?',
+    featuresTitle: 'Pourquoi choisir',
     featuresSubtitle: 'Conçu pour les communautés, approuvé par les autorités, conçu pour avoir un impact',
     feature1Title: 'Suivi en temps réel',
     feature1Desc: 'Surveillez vos rapports de la soumission à la résolution avec des mises à jour en direct',
@@ -139,21 +139,21 @@ const translations = {
     feature4Title: 'Optimisé pour mobile',
     feature4Desc: 'Signalez les problèmes n\'importe où avec notre conception mobile-first responsive',
     testimonialsTitle: 'Ce que dit notre communauté',
-    testimonial1: '"FixIt m\'a aidé à signaler un nid-de-poule dangereux qui a été réparé en une semaine. Temps de réponse incroyable !"',
+    testimonial1: '"CIRT m\'a aidé à signaler un nid-de-poule dangereux qui a été réparé en une semaine. Temps de réponse incroyable !"',
     testimonial1Author: 'Sarah Johnson',
     testimonial1Role: 'Membre de la communauté',
-    testimonial2: '"En tant qu\'officiel municipal, FixIt a rationalisé notre suivi des problèmes et amélioré l\'engagement citoyen significativement."',
+    testimonial2: '"En tant qu\'officiel municipal, CIRT a rationalisé notre suivi des problèmes et amélioré l\'engagement citoyen significativement."',
     testimonial2Author: 'Maire David Chen',
     testimonial2Role: 'Ville de Toronto',
     testimonial3: '"L\'application est si facile à utiliser. J\'ai signalé plusieurs problèmes dans mon quartier et ils ont tous été résolus."',
     testimonial3Author: 'Fatima Al-Rashid',
     testimonial3Role: 'Résidente',
     trustTitle: 'Approuvé par les villes du monde entier',
-    trustSubtitle: 'Rejoignez des milliers de communautés utilisant déjà FixIt',
+    trustSubtitle: 'Rejoignez des milliers de communautés utilisant déjà CIRT',
     ctaTitle: 'Prêt à réparer votre ville ?',
     ctaSubtitle: 'Rejoignez des milliers de citoyens qui améliorent leurs communautés',
     ctaButton: 'Commencer à signaler des problèmes',
-    footerText: '© 2025 FixIt. Améliorer les communautés, un problème à la fois.',
+    footerText: '© 2025 CIRT. Améliorer les communautés, un problème à la fois.',
     privacy: 'Politique de confidentialité',
     terms: 'Conditions d\'utilisation',
     contact: 'Nous contacter'
@@ -252,15 +252,10 @@ export function LandingPage({ language, setLanguage, onGetStarted, isDarkMode, t
             <div className="flex justify-between items-center h-16 lg:h-20">
               {/* Enhanced Logo */}
               <div className="flex items-center space-x-3 group cursor-pointer">
-                <div className="relative">
-                  <div className="w-12 h-12 lg:w-14 lg:h-14 bg-gradient-to-br from-blue-600 via-purple-600 to-green-600 rounded-2xl flex items-center justify-center transform group-hover:scale-110 transition-transform duration-300 shadow-xl">
-                    <CheckCircle className="h-7 w-7 lg:h-8 lg:w-8 text-white" />
-                  </div>
-                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full animate-pulse" />
-                </div>
+                <img src="/logo.svg" alt="CIRT Logo" className="w-12 h-12 lg:w-14 lg:h-14 transform group-hover:scale-110 transition-transform duration-300" />
                 <div>
                   <h1 className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                    FixIt
+                    CIRT
                   </h1>
                   <p className="text-xs lg:text-sm text-muted-foreground font-medium hidden sm:block">Civic Solutions</p>
                 </div>
@@ -302,7 +297,7 @@ export function LandingPage({ language, setLanguage, onGetStarted, isDarkMode, t
                     <span className="text-sm lg:text-base font-medium hidden sm:inline">{language.toUpperCase()}</span>
                     <ChevronDown className="h-4 w-4 lg:h-5 lg:w-5 ml-1" />
                   </SelectTrigger>
-                  <SelectContent className="rounded-xl border-border shadow-2xl bg-card">
+                  <SelectContent className="rounded-lg border-border shadow-lg bg-card z-50" sideOffset={8}>
                     <SelectItem value="en" className="rounded-lg">🇺🇸 English</SelectItem>
                     <SelectItem value="fr" className="rounded-lg">🇫🇷 Français</SelectItem>
                   </SelectContent>
@@ -340,7 +335,7 @@ export function LandingPage({ language, setLanguage, onGetStarted, isDarkMode, t
 
           {/* Enhanced Mobile Menu */}
           {mobileMenuOpen && (
-            <div className="lg:hidden absolute top-full left-0 right-0 bg-background/98 backdrop-blur-xl border-b border-border/50 shadow-2xl">
+            <div className="lg:hidden absolute top-full left-0 right-0 bg-card shadow-lg z-50 rounded-b-lg border-t border-border/50">
               <div className="px-4 py-6 space-y-4">
                 {['features', 'how-it-works', 'testimonials'].map((section) => (
                   <button
@@ -590,7 +585,7 @@ export function LandingPage({ language, setLanguage, onGetStarted, isDarkMode, t
             <div className="text-center mb-12 lg:mb-16 xl:mb-20">
               <h2 className="text-3xl lg:text-4xl xl:text-5xl font-bold text-foreground mb-6 lg:mb-8">
                 {t.howItWorksTitle}
-                <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"> FixIt</span>
+                <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"> CIRT</span>
               </h2>
               <p className="text-lg lg:text-xl xl:text-2xl text-muted-foreground max-w-2xl mx-auto">
                 {t.howItWorksSubtitle}
@@ -659,7 +654,7 @@ export function LandingPage({ language, setLanguage, onGetStarted, isDarkMode, t
             <div className="text-center mb-12 lg:mb-16 xl:mb-20">
               <h2 className="text-3xl lg:text-4xl xl:text-5xl font-bold text-foreground mb-6 lg:mb-8">
                 {t.featuresTitle}
-                <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"> FixIt?</span>
+                <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"> CIRT?</span>
               </h2>
               <p className="text-lg lg:text-xl xl:text-2xl text-muted-foreground max-w-2xl mx-auto">
                 {t.featuresSubtitle}
@@ -717,7 +712,7 @@ export function LandingPage({ language, setLanguage, onGetStarted, isDarkMode, t
                 {t.testimonialsTitle}
               </h2>
               <p className="text-lg lg:text-xl xl:text-2xl text-muted-foreground max-w-2xl mx-auto">
-                Hear from citizens and officials who transformed their communities with FixIt
+                Hear from citizens and officials who transformed their communities with CIRT
               </p>
             </div>
             
@@ -823,7 +818,7 @@ export function LandingPage({ language, setLanguage, onGetStarted, isDarkMode, t
                   <CheckCircle className="h-6 w-6 lg:h-8 lg:w-8 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-lg lg:text-xl xl:text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">FixIt</h3>
+                  <h3 className="text-lg lg:text-xl xl:text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">CIRT</h3>
                   <p className="text-sm lg:text-base xl:text-lg text-muted-foreground">{t.footerText}</p>
                 </div>
               </div>
