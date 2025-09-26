@@ -192,17 +192,11 @@ export function NotificationsPanel({
 
   const markAsRead = async (notificationId: string) => {
     try {
-      const headers: Record<string, string> = {
-        'Authorization': `Bearer ${session?.access_token}`
-      };
-      
-      if (tempRole) {
-        headers['X-Temp-Role'] = tempRole;
-      }
-
       await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-accecacf/notifications/${notificationId}/read`, {
         method: 'PATCH',
-        headers
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`
+        }
       })
 
       setNotifications(prev =>
@@ -237,16 +231,11 @@ export function NotificationsPanel({
 
   const deleteNotification = async (notificationId: string) => {
     try {
-      const headers: Record<string, string> = {
-        'Authorization': `Bearer ${session?.access_token}`
-      };
-      if (tempRole) {
-        headers['X-Temp-Role'] = tempRole;
-      }
-
       await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-accecacf/notifications/${notificationId}`, {
         method: 'DELETE',
-        headers
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`
+        }
       })
 
       setNotifications(prev => prev.filter(n => n.id !== notificationId))

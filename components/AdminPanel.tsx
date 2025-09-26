@@ -11,6 +11,7 @@ import {
 import { Badge } from "./ui/badge.tsx";
 import { Button } from "./ui/button.tsx";
 import { Input } from "./ui/input.tsx";
+import { Checkbox } from "./ui/checkbox.tsx";
 import {
   Select,
   SelectContent,
@@ -57,6 +58,18 @@ import {
 } from "lucide-react";
 import { projectId } from "../utils/supabase/info.ts";
 // import './index.css';
+
+const issueCategories = [
+  'Road & Transportation',
+  'Water & Utilities',
+  'Parks & Recreation',
+  'Public Safety',
+  'Waste Management',
+  'Street Lighting',
+  'Public Buildings',
+  'Environmental',
+  'Other'
+]
 
 const translations = {
   en: {
@@ -112,6 +125,8 @@ const translations = {
     citizen: "Citizen",
     technician: "Technician",
     admin: "Administrator",
+    categories: "Categories",
+    selectCategories: "Select categories for this technician",
     joinedOn: "Joined on",
     lastSeen: "Last seen",
     actions: "Actions",
@@ -200,6 +215,8 @@ const translations = {
     citizen: "Citoyen",
     technician: "Technicien",
     admin: "Administrateur",
+    categories: "Catégories",
+    selectCategories: "Sélectionner les catégories pour ce technicien",
     joinedOn: "Inscrit le",
     lastSeen: "Dernière connexion",
     actions: "Actions",
@@ -260,6 +277,7 @@ interface User {
   email: string;
   role: "citizen" | "technician" | "admin";
   status: "active" | "inactive";
+  categories: string[];
   createdAt: string;
   lastSeenAt?: string;
 }
@@ -370,8 +388,10 @@ export function AdminPanel({
   const [userForm, setUserForm] = useState({
     name: "",
     email: "",
+    password: "",
     role: "citizen" as "citizen" | "technician" | "admin",
     status: "active" as "active" | "inactive",
+    categories: [] as string[],
   });
 
   // Notification form
@@ -558,8 +578,8 @@ export function AdminPanel({
       setUpdateLoading("user");
 
       const url = selectedUser
-        ? `https://${projectId}.supabase.co/functions/v1/make-server-accecacf/users/${selectedUser.id}/role`
-        : `https://${projectId}.supabase.co/functions/v1/make-server-accecacf/users`;
+        ? `https://${projectId}.supabase.co/functions/v1/make-server-accecacf/users/${selectedUser.id}`
+        : `https://${projectId}.supabase.co/functions/v1/make-server-accecacf/signup`;
 
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
@@ -570,11 +590,15 @@ export function AdminPanel({
         headers["X-Temp-Role"] = tempRole;
       }
 
+      const body = selectedUser
+        ? { name: userForm.name, email: userForm.email, role: userForm.role, categories: userForm.categories }
+        : { name: userForm.name, email: userForm.email, password: userForm.password, role: userForm.role, categories: userForm.categories };
+
       const response = await fetch(url, {
         method: selectedUser ? "PATCH" : "POST",
         headers,
         body: JSON.stringify(
-          selectedUser ? { role: userForm.role } : userForm,
+          body
         ),
       });
 
@@ -589,8 +613,10 @@ export function AdminPanel({
       setUserForm({
         name: "",
         email: "",
+        password: "",
         role: "citizen",
         status: "active",
+        categories: [],
       });
       addToast(`User ${selectedUser ? "updated" : "created"} successfully`, 'success');
 
@@ -608,13 +634,19 @@ export function AdminPanel({
     try {
       setUpdateLoading("delete");
 
+      const headers: Record<string, string> = {
+        Authorization: `Bearer ${session.access_token}`,
+      };
+
+      if (tempRole) {
+        headers["X-Temp-Role"] = tempRole;
+      }
+
       const response = await fetch(
         `https://${projectId}.supabase.co/functions/v1/make-server-accecacf/users/${selectedUser.id}`,
         {
           method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
+          headers,
         },
       );
 
@@ -1278,8 +1310,10 @@ export function AdminPanel({
                         setUserForm({
                           name: "",
                           email: "",
+                          password: "",
                           role: "citizen",
                           status: "active",
+                          categories: [],
                         });
                         setUserDialogOpen(true);
                       }}
@@ -1349,6 +1383,18 @@ export function AdminPanel({
                                     ] || user.status}
                                   </Badge>
                                 </div>
+                                {user.role === 'technician' && user.categories.length > 0 && (
+                                  <div className="mt-2">
+                                    <p className="text-sm text-muted-foreground">{t.categories}:</p>
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {user.categories.map(category => (
+                                        <Badge key={category} variant="outline" className="text-xs">
+                                          {category}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
                                 <div className="text-xs text-muted-foreground mt-1">
                                   {t.joinedOn}:{" "}
                                   {new Date(
@@ -1374,8 +1420,10 @@ export function AdminPanel({
                                   setUserForm({
                                     name: user.name,
                                     email: user.email,
+                                    password: "", // Clear password for edit
                                     role: user.role,
                                     status: user.status,
+                                    categories: user.categories,
                                   });
                                   setUserDialogOpen(true);
                                 }}
@@ -1524,6 +1572,29 @@ export function AdminPanel({
                       className="bg-background border-border text-foreground"
                     />
                   </div>
+                  {!selectedUser && (
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="userPassword"
+                        className="text-foreground"
+                      >
+                        Password
+                      </Label>
+                      <Input
+                        id="userPassword"
+                        type="password"
+                        placeholder="Enter password"
+                        value={userForm.password}
+                        onChange={(e) =>
+                          setUserForm((prev) => ({
+                            ...prev,
+                            password: e.target.value,
+                          }))
+                        }
+                        className="bg-background border-border text-foreground"
+                      />
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <Label
                       htmlFor="userRole"
@@ -1587,6 +1658,31 @@ export function AdminPanel({
                   </div>
                 </div>
 
+                {userForm.role === 'technician' && (
+                  <div className="space-y-2">
+                    <Label className="text-foreground">{t.categories}</Label>
+                    <p className="text-sm text-muted-foreground">{t.selectCategories}</p>
+                    <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
+                      {issueCategories.map(category => (
+                        <div key={category} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`category-${category}`}
+                            checked={userForm.categories.includes(category)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setUserForm(prev => ({ ...prev, categories: [...prev.categories, category] }))
+                              } else {
+                                setUserForm(prev => ({ ...prev, categories: prev.categories.filter(c => c !== category) }))
+                              }
+                            }}
+                          />
+                          <Label htmlFor={`category-${category}`} className="text-sm text-foreground">{category}</Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <DialogFooter>
                   <Button
                     variant="outline"
@@ -1600,7 +1696,8 @@ export function AdminPanel({
                     disabled={
                       updateLoading === "user" ||
                       !userForm.name ||
-                      !userForm.email
+                      !userForm.email ||
+                      (!selectedUser && !userForm.password)
                     }
                     className="bg-primary text-white hover:bg-primary/90"
                   >

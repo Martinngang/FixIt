@@ -119,32 +119,6 @@ app.put('/make-server-accecacf/issues/:id/update', async (c) => {
   }
 })
 
-
-// User signup
-app.post('/make-server-accecacf/signup', async (c) => {
-  try {
-    const { email, password, name } = await c.req.json()
-    
-    const { data, error } = await supabase.auth.admin.createUser({
-      email,
-      password,
-      user_metadata: { name },
-      // Automatically confirm the user's email since an email server hasn't been configured.
-      email_confirm: true
-    })
-    
-    if (error) {
-      console.log('Signup error:', error)
-      return c.json({ error: error.message }, 400)
-    }
-    
-    return c.json({ success: true, user: data.user })
-  } catch (error) {
-    console.log('Signup error:', error)
-    return c.json({ error: 'Failed to create user' }, 500)
-  }
-})
-
 // Create new issue
 app.post('/make-server-accecacf/issues', async (c) => {
   try {
@@ -155,7 +129,7 @@ app.post('/make-server-accecacf/issues', async (c) => {
       return c.json({ error: 'Unauthorized' }, 401)
     }
     
-    const { title, description, category, location, priority = 'medium', coordinates } = await c.req.json()
+    const { title, description, category, location, priority = 'medium', coordinates, photo } = await c.req.json()
     
     const issue = {
       id: crypto.randomUUID(),
@@ -170,12 +144,60 @@ app.post('/make-server-accecacf/issues', async (c) => {
       reportedAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       coordinates: coordinates || null,
-      photoUrl: null
+      photoUrl: photo || null
     }
     
     await kv.set(`issue:${issue.id}`, issue)
     await kv.set(`user_issue:${user.id}:${issue.id}`, issue.id)
-    
+
+    // Auto-assign to technician based on category
+    if (issue.category !== 'Other') {
+      const { data: authUsers, error } = await supabase.auth.admin.listUsers({
+        page: 1,
+        perPage: 1000
+      })
+
+      if (!error && authUsers?.users) {
+        const technicians = authUsers.users.filter(user =>
+          user.user_metadata?.role === 'technician' &&
+          (user.user_metadata?.categories || []).includes(issue.category)
+        )
+
+        if (technicians.length > 0) {
+          const assignedTechnician = technicians[Math.floor(Math.random() * technicians.length)]
+
+          const updatedIssue = {
+            ...issue,
+            assignedTo: assignedTechnician.id,
+            assignedBy: 'system',
+            assignedAt: new Date().toISOString(),
+            status: 'assigned',
+            updatedAt: new Date().toISOString()
+          }
+
+          await kv.set(`issue:${issue.id}`, updatedIssue)
+
+          // Send notification to technician
+          const notification = {
+            id: crypto.randomUUID(),
+            recipientId: assignedTechnician.id,
+            title: 'New Issue Assigned',
+            message: `A new issue has been automatically assigned to you: ${issue.title}`,
+            type: 'assignment',
+            relatedIssueId: issue.id,
+            senderId: 'system',
+            senderName: 'System',
+            createdAt: new Date().toISOString(),
+            read: false
+          }
+
+          await kv.set(`notification:${assignedTechnician.id}:${notification.id}`, notification)
+
+          return c.json({ success: true, issue: updatedIssue })
+        }
+      }
+    }
+
     return c.json({ success: true, issue })
   } catch (error) {
     console.log('Create issue error:', error)
@@ -260,6 +282,23 @@ app.get('/make-server-accecacf/issues', async (c) => {
   } catch (error) {
     console.log('Get issues error:', error)
     return c.json({ error: 'Failed to fetch issues' }, 500)
+  }
+})
+
+// Get a single issue by ID
+app.get('/make-server-accecacf/issues/:id', async (c) => {
+  try {
+    const issueId = c.req.param('id')
+    const issue = await kv.get(`issue:${issueId}`)
+
+    if (!issue) {
+      return c.json({ error: 'Issue not found' }, 404)
+    }
+
+    return c.json({ issue })
+  } catch (error) {
+    console.log('Get single issue error:', error)
+    return c.json({ error: 'Failed to fetch issue' }, 500)
   }
 })
 
@@ -491,6 +530,7 @@ app.get('/make-server-accecacf/users', async (c) => {
       email: authUser.email,
       name: authUser.user_metadata?.name || 'Unknown',
       role: authUser.user_metadata?.role || 'citizen',
+      categories: authUser.user_metadata?.categories || [],
       created_at: authUser.created_at,
       last_sign_in_at: authUser.last_sign_in_at,
       email_confirmed_at: authUser.email_confirmed_at
@@ -503,41 +543,123 @@ app.get('/make-server-accecacf/users', async (c) => {
   }
 })
 
-// Update user role (admin only)
-app.patch('/make-server-accecacf/users/:id/role', async (c) => {
+// Create user (admin only)
+app.post('/make-server-accecacf/users', async (c) => {
   try {
     const accessToken = c.req.header('Authorization')?.split(' ')[1]
-    const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken)
-    
-    if (!user?.id) {
+    const { data: { user: adminUser }, error: authError } = await supabase.auth.getUser(accessToken)
+
+    if (!adminUser?.id) {
       return c.json({ error: 'Unauthorized' }, 401)
     }
-    
-    const userRole = getEffectiveUserRole(user, c.req)
+
+    const userRole = getEffectiveUserRole(adminUser, c.req)
     if (userRole !== 'admin') {
       return c.json({ error: 'Admin access required' }, 403)
     }
-    
-    const userId = c.req.param('id')
-    const { role } = await c.req.json()
-    
-    if (!['citizen', 'technician', 'admin'].includes(role)) {
-      return c.json({ error: 'Invalid role' }, 400)
-    }
-    
-    const { data, error } = await supabase.auth.admin.updateUserById(userId, {
-      user_metadata: { role }
+
+    const { email, password, name, role, categories = [] } = await c.req.json()
+
+    // Create a dedicated admin client to avoid context issues
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    )
+
+    const { data, error } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      user_metadata: { name, role: role || 'citizen', categories },
+      email_confirm: true
     })
-    
+
     if (error) {
-      console.log('Update user role error:', error)
-      return c.json({ error: 'Failed to update user role' }, 500)
+      console.log('Create user error:', error)
+      return c.json({ error: error.message }, 400)
     }
-    
+
     return c.json({ success: true, user: data.user })
   } catch (error) {
-    console.log('Update user role error:', error)
-    return c.json({ error: 'Failed to update user role' }, 500)
+    console.log('Create user server error:', error)
+    return c.json({ error: 'Failed to create user' }, 500)
+  }
+})
+// Update user (admin only)
+app.patch('/make-server-accecacf/users/:id', async (c) => {
+  try {
+    const accessToken = c.req.header('Authorization')?.split(' ')[1]
+    const { data: { user: adminUser }, error: authError } = await supabase.auth.getUser(accessToken)
+
+    if (!adminUser?.id) {
+      return c.json({ error: 'Unauthorized' }, 401)
+    }
+
+    const userRole = getEffectiveUserRole(adminUser, c.req)
+    if (userRole !== 'admin') {
+      return c.json({ error: 'Admin access required' }, 403)
+    }
+
+    const userId = c.req.param('id')
+    const { role, name, email, categories } = await c.req.json()
+
+    const updateData: { email?: string; user_metadata?: any } = {}
+    updateData.user_metadata = {}
+
+    if (role) {
+      if (!['citizen', 'technician', 'admin'].includes(role)) {
+        return c.json({ error: 'Invalid role' }, 400)
+      }
+      updateData.user_metadata.role = role
+    }
+
+    if (name !== undefined) {
+      updateData.user_metadata.name = name
+    }
+
+    if (email) {
+      updateData.email = email
+    }
+
+    if (categories !== undefined) {
+      updateData.user_metadata.categories = categories
+    }
+
+    const { data, error } = await supabase.auth.admin.updateUserById(userId, updateData)
+
+    if (error) throw error
+
+    return c.json({ success: true, user: data.user })
+  } catch (error) {
+    console.log('Update user error:', error)
+    return c.json({ error: 'Failed to update user' }, 500)
+  }
+})
+
+// Delete user (admin only)
+app.delete('/make-server-accecacf/users/:id', async (c) => {
+  try {
+    const accessToken = c.req.header('Authorization')?.split(' ')[1]
+    const { data: { user: adminUser }, error: authError } = await supabase.auth.getUser(accessToken)
+
+    if (!adminUser?.id) {
+      return c.json({ error: 'Unauthorized' }, 401)
+    }
+
+    const userRole = getEffectiveUserRole(adminUser, c.req)
+    if (userRole !== 'admin') {
+      return c.json({ error: 'Admin access required' }, 403)
+    }
+
+    const userId = c.req.param('id')
+
+    const { error } = await supabase.auth.admin.deleteUser(userId)
+
+    if (error) throw error
+
+    return c.json({ success: true })
+  } catch (error) {
+    console.log('Delete user error:', error)
+    return c.json({ error: 'Failed to delete user' }, 500)
   }
 })
 
@@ -578,7 +700,14 @@ app.post('/make-server-accecacf/notifications', async (c) => {
     // Get recipients based on recipientId
     let recipients: string[] = []
     if (recipientId === 'all' || recipientId === 'technicians' || recipientId === 'citizens') {
-      const { data: authUsers, error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 })
+      // Create a dedicated admin client to avoid context issues
+      const supabaseAdmin = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      )
+      const { data: authUsers, error } = await supabaseAdmin.auth.admin.listUsers({
+        page: 1, perPage: 1000
+      })
       if (error) throw new Error('Failed to fetch users')
       const users = authUsers?.users?.map(authUser => ({
         id: authUser.id,
@@ -713,4 +842,4 @@ app.post('/make-server-accecacf/issues/:id/assign', async (c) => {
   }
 })
 
-Deno.serve(app.fetch)
+Deno.serve({ port: 8001 }, app.fetch)
