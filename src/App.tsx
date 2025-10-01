@@ -7,12 +7,14 @@ import { MyIssues } from '../components/MyIssues.tsx'
 import { AdminPanel } from '../components/AdminPanel.tsx'
 import { TechnicianPanel } from '../components/TechnicianPanel.tsx'
 import { NotificationsPanel } from '../components/NotificationsPanel.tsx'
+import { Profile } from '../components/Profile.tsx'
 import { ToastProvider, useToast } from '../components/ToastContext.tsx'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs.tsx'
 import { Button } from '../components/ui/button.tsx'
 import { Badge } from '../components/ui/badge.tsx'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select.tsx'
-import { User, MapPin, Settings, LogOut, Globe, Camera, Moon, Sun, Wrench, Bell, Users, UserCog, Menu, X } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog.tsx'
+import { User, MapPin, Settings, LogOut, Globe, Camera, Moon, Sun, Wrench, Bell, Users, UserCog, Menu, X, UserCircle } from 'lucide-react'
 import { supabase } from '../utils/supabase/client.ts'
 // import './index.css'
 
@@ -70,6 +72,7 @@ function AppContent() {
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [tempRole, setTempRole] = useState<string | null>(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false)
   const { addToast } = useToast();
 
   useEffect(() => {
@@ -139,13 +142,17 @@ function AppContent() {
   const userName = user?.user_metadata?.name || user?.email || 'User'
 
   const getTabsForRole = (role: string) => {
+    const baseTabs = [
+      { id: 'dashboard', label: t.dashboard, icon: MapPin },
+      { id: 'notifications', label: t.notifications, icon: Bell }
+    ]
+
     switch (role) {
       case 'admin':
         return [
-          { id: 'dashboard', label: t.dashboard, icon: MapPin },
+          ...baseTabs,
           { id: 'admin', label: t.admin, icon: Settings },
-          { id: 'users', label: t.userManagement, icon: Users },
-          { id: 'notifications', label: t.notifications, icon: Bell }
+          { id: 'users', label: t.userManagement, icon: Users }
         ]
       case 'technician':
         return [
@@ -155,10 +162,9 @@ function AppContent() {
         ]
       default:
         return [
-          { id: 'dashboard', label: t.dashboard, icon: MapPin },
+          ...baseTabs,
           { id: 'report', label: t.reportIssue, icon: Camera },
-          { id: 'my-issues', label: t.myIssues, icon: User },
-          { id: 'notifications', label: t.notifications, icon: Bell }
+          { id: 'my-issues', label: t.myIssues, icon: User }
         ]
     }
   }
@@ -561,6 +567,19 @@ function AppContent() {
                 </Select>
 
                 <div className="flex items-center space-x-2">
+                  <Dialog open={profileDialogOpen} onOpenChange={setProfileDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                        <UserCircle className="h-4 w-4" />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>Profile</DialogTitle>
+                      </DialogHeader>
+                      <Profile session={session} language={language} />
+                    </DialogContent>
+                  </Dialog>
                   <div className="flex flex-col items-end">
                     <span className="text-sm text-foreground">{userName}</span>
                     <div className="flex items-center space-x-1">
@@ -653,7 +672,18 @@ function AppContent() {
 
                   <div className="flex items-center justify-between py-2">
                     <div className="flex items-center space-x-2">
-                      <User className="h-4 w-4 text-muted-foreground" />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setProfileDialogOpen(true)
+                          setMobileMenuOpen(false)
+                        }}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        <UserCircle className="h-4 w-4 mr-2" />
+                        Profile
+                      </Button>
                       <div className="flex flex-col">
                         <span className="text-sm text-foreground">{userName}</span>
                         <div className="flex items-center space-x-1">

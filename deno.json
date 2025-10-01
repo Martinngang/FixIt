@@ -9,6 +9,10 @@
 
   "nodeModulesDir": "auto",
   "imports": {
-    "@supabase/supabase-js": "npm:@supabase/supabase-js@2.49.8"
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2.49.8",
+    "@testing-library/jest-dom": "npm:@testing-library/jest-dom",
+    "ts-jest": "npm:ts-jest",
+    "jest-environment-jsdom": "npm:jest-environment-jsdom",
+    "identity-obj-proxy": "npm:identity-obj-proxy"
   }
 }
