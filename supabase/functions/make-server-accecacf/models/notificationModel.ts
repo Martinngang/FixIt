@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import * as kv from '../kv_store.tsx'
+import { NotFoundError } from '../utils/errors.ts'
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -76,7 +77,7 @@ export async function sendNotification({
 
 export async function markAsRead(userId: string, notificationId: string) {
   const notification = await kv.get(`notification:${userId}:${notificationId}`)
-  if (!notification) throw new Error('Notification not found')
+  if (!notification) throw new NotFoundError('Notification not found')
 
   const updatedNotification = {
     ...notification,

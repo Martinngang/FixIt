@@ -1,3 +1,14 @@
+export interface UserReputation {
+  points: number;
+  badge: 'newcomer' | 'active_citizen' | 'civic_contributor' | 'community_champion';
+  nextBadge: { key: string; pointsNeeded: number } | null;
+  breakdown: {
+    reported: number;
+    resolved: number;
+    upvotesReceived: number;
+  };
+}
+
 export interface User {
   id: string;
   email: string;
@@ -9,4 +20,5 @@ export interface User {
   categories?: string[];
   created_at?: string;
   last_sign_in_at?: string;
+  reputation?: UserReputation;
 }

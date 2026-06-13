@@ -6,7 +6,7 @@ import { Label } from "./ui/label.tsx"
 import { Textarea } from "./ui/textarea.tsx"
 import { Alert, AlertDescription } from "./ui/alert.tsx"
 import { Badge } from "./ui/badge.tsx"
-import { User, Mail, Phone, MapPin, Save, Edit, X, Camera, Upload } from 'lucide-react'
+import { User, Mail, Phone, MapPin, Save, Edit, X, Camera, Upload, Award } from 'lucide-react'
 import { supabase } from '../utils/supabase/client.ts'
 import { User as UserType } from '../src/types/user.ts'
 
@@ -35,7 +35,18 @@ const translations = {
     updateError: 'Failed to update profile',
     citizen: 'Citizen',
     technician: 'Technician',
-    admin: 'Administrator'
+    admin: 'Administrator',
+    reputation: 'Reputation & Badges',
+    reputationSubtitle: 'Earn points and badges by reporting issues and helping your community',
+    points: 'points',
+    badgeNewcomer: 'Newcomer',
+    badgeActiveCitizen: 'Active Citizen',
+    badgeCivicContributor: 'Civic Contributor',
+    badgeCommunityChampion: 'Community Champion',
+    issuesReported: 'Issues Reported',
+    issuesResolved: 'Issues Resolved',
+    upvotesReceived: 'Upvotes Received',
+    pointsToNextBadge: 'points to',
   },
   fr: {
     profile: 'Profil',
@@ -56,7 +67,18 @@ const translations = {
     updateError: 'Échec de la mise à jour du profil',
     citizen: 'Citoyen',
     technician: 'Technicien',
-    admin: 'Administrateur'
+    admin: 'Administrateur',
+    reputation: 'Réputation et badges',
+    reputationSubtitle: 'Gagnez des points et des badges en signalant des problèmes et en aidant votre communauté',
+    points: 'points',
+    badgeNewcomer: 'Nouveau venu',
+    badgeActiveCitizen: 'Citoyen actif',
+    badgeCivicContributor: 'Contributeur civique',
+    badgeCommunityChampion: 'Champion communautaire',
+    issuesReported: 'Problèmes signalés',
+    issuesResolved: 'Problèmes résolus',
+    upvotesReceived: 'Votes reçus',
+    pointsToNextBadge: 'points avant',
   }
 }
 
@@ -209,6 +231,16 @@ export function Profile({ session, language = 'en' }: ProfileProps) {
     }
   }
 
+  const getBadgeDisplay = (badge: string) => {
+    switch (badge) {
+      case 'newcomer': return t.badgeNewcomer
+      case 'active_citizen': return t.badgeActiveCitizen
+      case 'civic_contributor': return t.badgeCivicContributor
+      case 'community_champion': return t.badgeCommunityChampion
+      default: return badge
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -296,6 +328,49 @@ export function Profile({ session, language = 'en' }: ProfileProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Reputation & Badges */}
+      {user?.reputation && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Award className="h-5 w-5" />
+              <span>{t.reputation}</span>
+            </CardTitle>
+            <CardDescription>{t.reputationSubtitle}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center space-x-3">
+              <Badge className="text-base px-3 py-1">
+                {getBadgeDisplay(user.reputation.badge)}
+              </Badge>
+              <span className="text-2xl font-bold text-foreground">{user.reputation.points}</span>
+              <span className="text-muted-foreground">{t.points}</span>
+            </div>
+
+            {user.reputation.nextBadge && (
+              <p className="text-sm text-muted-foreground">
+                {user.reputation.nextBadge.pointsNeeded} {t.pointsToNextBadge} {getBadgeDisplay(user.reputation.nextBadge.key)}
+              </p>
+            )}
+
+            <div className="grid grid-cols-3 gap-4 pt-2">
+              <div className="text-center">
+                <div className="text-xl font-semibold text-foreground">{user.reputation.breakdown.reported}</div>
+                <div className="text-xs text-muted-foreground">{t.issuesReported}</div>
+              </div>
+              <div className="text-center">
+                <div className="text-xl font-semibold text-foreground">{user.reputation.breakdown.resolved}</div>
+                <div className="text-xs text-muted-foreground">{t.issuesResolved}</div>
+              </div>
+              <div className="text-center">
+                <div className="text-xl font-semibold text-foreground">{user.reputation.breakdown.upvotesReceived}</div>
+                <div className="text-xs text-muted-foreground">{t.upvotesReceived}</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Personal Information */}

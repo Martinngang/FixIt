@@ -1,34 +1,34 @@
 
 import { useState, useEffect, useCallback } from "react";
-import { useToast } from "./ToastContext.tsx";
+import { useToast } from "./ToastContext";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "./ui/card.tsx";
-import { Badge } from "./ui/badge.tsx";
-import { Button } from "./ui/button.tsx";
-import { Input } from "./ui/input.tsx";
-import { Checkbox } from "./ui/checkbox.tsx";
+} from "./ui/card";
+import { Badge } from "./ui/badge";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Checkbox } from "./ui/checkbox";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "./ui/select.tsx";
-import { Textarea } from "./ui/textarea.tsx";
-import { Label } from "./ui/label.tsx";
-import { Alert, AlertDescription } from "./ui/alert.tsx";
-import { Skeleton } from "./ui/skeleton.tsx";
+} from "./ui/select";
+import { Textarea } from "./ui/textarea";
+import { Label } from "./ui/label";
+import { Alert, AlertDescription } from "./ui/alert";
+import { Skeleton } from "./ui/skeleton";
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "./ui/tabs.tsx";
+} from "./ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -37,7 +37,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "./ui/dialog.tsx";
+} from "./ui/dialog";
 import {
   Settings,
   Clock,
@@ -55,8 +55,12 @@ import {
   Bell,
   Shield,
   Eye,
+  ThumbsUp,
+  AlertTriangle,
+  Flame,
 } from "lucide-react";
-import { projectId } from "../utils/supabase/info.ts";
+import { projectId, publicAnonKey } from "../utils/supabase/info";
+import { IssueComments } from "./IssueComments";
 // import './index.css';
 
 const issueCategories = [
@@ -158,6 +162,21 @@ const translations = {
     sendToAll: "Send Notification",
     sending: "Sending...",
     notificationSent: "Notification sent successfully",
+    sortBy: "Sort by",
+    sortRecent: "Most Recent",
+    sortUpvotes: "Most Upvoted",
+    sortFlagged: "Needs Attention",
+    needsAttention: "Needs Attention",
+    hotspots: "Hotspots",
+    hotspotsSubtitle: "Recurring problem locations that may need proactive maintenance",
+    refreshHotspots: "Refresh Hotspots",
+    noHotspotsTitle: "No Hotspots Detected",
+    noHotspotsDesc: "Locations need at least 2 reported issues to appear here",
+    topCategory: "Top category",
+    totalIssuesLabel: "issues",
+    recentIssuesLabel: "Recent (90 days)",
+    avgResolution: "Avg. resolution time",
+    days: "days",
   },
   fr: {
     adminPanel: "Panneau admin",
@@ -249,6 +268,21 @@ const translations = {
     sendToAll: "Envoyer la notification",
     sending: "Envoi...",
     notificationSent: "Notification envoyée avec succès",
+    sortBy: "Trier par",
+    sortRecent: "Plus récent",
+    sortUpvotes: "Plus voté",
+    sortFlagged: "Nécessite une attention",
+    needsAttention: "Nécessite une attention",
+    hotspots: "Points chauds",
+    hotspotsSubtitle: "Emplacements à problèmes récurrents pouvant nécessiter une maintenance proactive",
+    refreshHotspots: "Actualiser les points chauds",
+    noHotspotsTitle: "Aucun point chaud détecté",
+    noHotspotsDesc: "Les emplacements doivent avoir au moins 2 problèmes signalés pour apparaître ici",
+    topCategory: "Catégorie principale",
+    totalIssuesLabel: "problèmes",
+    recentIssuesLabel: "Récents (90 jours)",
+    avgResolution: "Temps de résolution moyen",
+    days: "jours",
   },
 };
 
@@ -269,6 +303,20 @@ interface Issue {
   coordinates?: { lat: number; lng: number };
   assignedTechnician?: string;
   assignedTechnicianName?: string;
+  upvotes?: number;
+  upvotedBy?: string[];
+  sentiment?: string;
+  flagged?: boolean;
+}
+
+interface Hotspot {
+  location: string;
+  totalIssues: number;
+  recentIssues: number;
+  flaggedIssues: number;
+  topCategory: string;
+  categories: Record<string, number>;
+  avgResolutionDays: number | null;
 }
 
 interface User {
@@ -361,6 +409,9 @@ export function AdminPanel({
   tempRole?: string | null;
 }) {
   const [issues, setIssues] = useState<Issue[]>([]);
+  const [issueSort, setIssueSort] = useState<"recent" | "upvotes" | "flagged">("recent");
+  const [hotspots, setHotspots] = useState<Hotspot[]>([]);
+  const [hotspotsLoading, setHotspotsLoading] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [technicians, setTechnicians] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -443,6 +494,37 @@ export function AdminPanel({
       handleError(err.message || "Failed to load issues");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchHotspots = async () => {
+    try {
+      setHotspotsLoading(true);
+
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/make-server-accecacf/hotspots`,
+        {
+          headers: {
+            Authorization: `Bearer ${publicAnonKey}`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(
+          data.error ||
+            `API error: ${response.status} ${response.statusText}`,
+        );
+      }
+
+      const data = await response.json();
+      setHotspots(data.hotspots || []);
+    } catch (err: any) {
+      console.error("Fetch hotspots error:", err);
+      handleError(err.message || "Failed to load hotspots");
+    } finally {
+      setHotspotsLoading(false);
     }
   };
 
@@ -722,6 +804,7 @@ export function AdminPanel({
     if (session?.access_token) {
       fetchIssues();
       fetchUsers();
+      fetchHotspots();
     }
   }, [session]);
 
@@ -926,6 +1009,13 @@ export function AdminPanel({
                   <span>{t.issueManagement}</span>
                 </TabsTrigger>
                 <TabsTrigger
+                  value="hotspots"
+                  className="flex items-center space-x-2 text-foreground hover:bg-muted"
+                >
+                  <Flame className="h-4 w-4" />
+                  <span>{t.hotspots}</span>
+                </TabsTrigger>
+                <TabsTrigger
                   value="users"
                   className="flex items-center space-x-2 text-foreground hover:bg-muted"
                 >
@@ -953,15 +1043,27 @@ export function AdminPanel({
                       {t.subtitle}
                     </p>
                   </div>
-                  <Button
-                    variant="outline"
-                    onClick={fetchIssues}
-                    disabled={loading}
-                    className="bg-background border-border text-foreground hover:bg-muted"
-                  >
-                    <Settings className="h-4 w-4 mr-2" />
-                    {t.refreshIssues}
-                  </Button>
+                  <div className="flex items-center space-x-2">
+                    <Select value={issueSort} onValueChange={(value) => setIssueSort(value as "recent" | "upvotes" | "flagged")}>
+                      <SelectTrigger className="w-44 bg-background border-border text-foreground">
+                        <SelectValue placeholder={t.sortBy} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="recent">{t.sortRecent}</SelectItem>
+                        <SelectItem value="upvotes">{t.sortUpvotes}</SelectItem>
+                        <SelectItem value="flagged">{t.sortFlagged}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      variant="outline"
+                      onClick={fetchIssues}
+                      disabled={loading}
+                      className="bg-background border-border text-foreground hover:bg-muted"
+                    >
+                      <Settings className="h-4 w-4 mr-2" />
+                      {t.refreshIssues}
+                    </Button>
+                  </div>
                 </div>
 
                 {issues.length === 0 ? (
@@ -978,7 +1080,13 @@ export function AdminPanel({
                   </Card>
                 ) : (
                   <div className="space-y-4">
-                    {issues.map((issue) => (
+                    {[...issues]
+                      .sort((a, b) => {
+                        if (issueSort === "upvotes") return (b.upvotes ?? 0) - (a.upvotes ?? 0);
+                        if (issueSort === "flagged") return (b.flagged ? 1 : 0) - (a.flagged ? 1 : 0);
+                        return new Date(b.reportedAt).getTime() - new Date(a.reportedAt).getTime();
+                      })
+                      .map((issue) => (
                       <Card
                         key={issue.id}
                         className="bg-card border-border shadow-lg"
@@ -998,6 +1106,24 @@ export function AdminPanel({
                                 >
                                   {issue.priority}
                                 </Badge>
+                                {(issue.upvotes ?? 0) > 0 && (
+                                  <Badge
+                                    variant="outline"
+                                    className="flex items-center gap-1 bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300"
+                                  >
+                                    <ThumbsUp className="h-3 w-3" />
+                                    {issue.upvotes}
+                                  </Badge>
+                                )}
+                                {issue.flagged && (
+                                  <Badge
+                                    variant="outline"
+                                    className="flex items-center gap-1 bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200"
+                                  >
+                                    <AlertTriangle className="h-3 w-3" />
+                                    {t.needsAttention}
+                                  </Badge>
+                                )}
                               </div>
                               <CardDescription className="space-y-1 text-muted-foreground">
                                 <div className="flex items-center space-x-4 text-sm">
@@ -1240,6 +1366,7 @@ export function AdminPanel({
                                     </DialogContent>
                                   </Dialog>
                                 )}
+                              <IssueComments issueId={issue.id} session={session} language={language} tempRole={tempRole} />
                             </div>
                           </div>
                         </CardHeader>
@@ -1273,6 +1400,104 @@ export function AdminPanel({
                               {new Date(
                                 issue.updatedAt,
                               ).toLocaleString()}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* Hotspots Tab */}
+              <TabsContent value="hotspots" className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold text-foreground flex items-center space-x-2">
+                      <Flame className="h-5 w-5" />
+                      <span>{t.hotspots}</span>
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                      {t.hotspotsSubtitle}
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={fetchHotspots}
+                    disabled={hotspotsLoading}
+                    className="bg-background border-border text-foreground hover:bg-muted"
+                  >
+                    <Settings className="h-4 w-4 mr-2" />
+                    {t.refreshHotspots}
+                  </Button>
+                </div>
+
+                {hotspots.length === 0 ? (
+                  <Card className="bg-card border-border shadow-lg">
+                    <CardContent className="text-center py-12">
+                      <Flame className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-foreground mb-2">
+                        {t.noHotspotsTitle}
+                      </h3>
+                      <p className="text-muted-foreground">
+                        {t.noHotspotsDesc}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-4">
+                    {hotspots.map((hotspot) => (
+                      <Card
+                        key={hotspot.location}
+                        className="bg-card border-border shadow-lg"
+                      >
+                        <CardHeader>
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <CardTitle className="text-lg text-foreground flex items-center space-x-2">
+                                <MapPin className="h-4 w-4" />
+                                <span>{hotspot.location}</span>
+                              </CardTitle>
+                              <CardDescription className="text-muted-foreground">
+                                {t.topCategory}: {hotspot.topCategory}
+                              </CardDescription>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Badge
+                                variant="outline"
+                                className="flex items-center gap-1 bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200"
+                              >
+                                <Flame className="h-3 w-3" />
+                                {hotspot.totalIssues} {t.totalIssuesLabel}
+                              </Badge>
+                              {hotspot.flaggedIssues > 0 && (
+                                <Badge
+                                  variant="outline"
+                                  className="flex items-center gap-1 bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200"
+                                >
+                                  <AlertTriangle className="h-3 w-3" />
+                                  {hotspot.flaggedIssues}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-2">
+                            <div className="text-sm text-muted-foreground">
+                              {t.recentIssuesLabel}: {hotspot.recentIssues}
+                            </div>
+                            {hotspot.avgResolutionDays !== null && (
+                              <div className="text-sm text-muted-foreground">
+                                {t.avgResolution}: {hotspot.avgResolutionDays} {t.days}
+                              </div>
+                            )}
+                            <div className="flex flex-wrap gap-1">
+                              {Object.entries(hotspot.categories).map(([category, count]) => (
+                                <Badge key={category} variant="outline" className="text-xs">
+                                  {category}: {count}
+                                </Badge>
+                              ))}
                             </div>
                           </div>
                         </CardContent>

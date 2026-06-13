@@ -1,5 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import * as kv from '../kv_store.tsx'
+import { ValidationError } from '../utils/errors.ts'
+import { getUserReputation } from './issueModel.ts'
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -8,6 +10,7 @@ const supabase = createClient(
 
 export async function getProfile(userId: string, user: any) {
   const profile = await kv.get(`profile:${userId}`) || {}
+  const reputation = await getUserReputation(userId)
 
   const userData = {
     id: user.id,
@@ -19,7 +22,8 @@ export async function getProfile(userId: string, user: any) {
     role: user.user_metadata?.role || 'citizen',
     categories: user.user_metadata?.categories || [],
     created_at: user.created_at,
-    last_sign_in_at: user.last_sign_in_at
+    last_sign_in_at: user.last_sign_in_at,
+    reputation
   }
 
   return userData
@@ -55,6 +59,7 @@ export async function updateProfile(userId: string, user: any, updates: { name?:
 
   // Get current profile to include avatarUrl
   const currentProfile = await kv.get(`profile:${userId}`) || {}
+  const reputation = await getUserReputation(userId)
 
   // Return updated user data
   const updatedUser = {
@@ -67,21 +72,53 @@ export async function updateProfile(userId: string, user: any, updates: { name?:
     role: user.user_metadata?.role || 'citizen',
     categories: user.user_metadata?.categories || [],
     created_at: user.created_at,
-    last_sign_in_at: user.last_sign_in_at
+    last_sign_in_at: user.last_sign_in_at,
+    reputation
   }
 
   return updatedUser
 }
 
+// Ranks citizens by their derived reputation points for the community
+// leaderboard. Recomputes every user's reputation on each call - fine at
+// civic-app scale, but would need caching if the user base grew large.
+export async function getLeaderboard(limit = 20) {
+  const { data: authUsers, error } = await supabase.auth.admin.listUsers({
+    page: 1,
+    perPage: 1000,
+  })
+  if (error) throw error
+
+  const entries = await Promise.all(
+    (authUsers?.users || []).map(async (authUser) => {
+      const reputation = await getUserReputation(authUser.id)
+      const profile = await kv.get(`profile:${authUser.id}`) || {}
+      return {
+        userId: authUser.id,
+        name: authUser.user_metadata?.name || profile.name || 'Anonymous',
+        avatarUrl: profile.avatarUrl || null,
+        points: reputation.points,
+        badge: reputation.badge,
+      }
+    })
+  )
+
+  return entries
+    .filter(entry => entry.points > 0)
+    .sort((a, b) => b.points - a.points)
+    .slice(0, limit)
+    .map((entry, index) => ({ rank: index + 1, ...entry }))
+}
+
 export async function uploadAvatar(userId: string, file: File) {
   // Validate file type
   if (!file.type.startsWith('image/')) {
-    throw new Error('Invalid file type. Only images are allowed.')
+    throw new ValidationError('Invalid file type. Only images are allowed.')
   }
 
   // Validate file size (max 5MB)
   if (file.size > 5 * 1024 * 1024) {
-    throw new Error('File size must be less than 5MB')
+    throw new ValidationError('File size must be less than 5MB')
   }
 
   const fileExtension = file.name.split('.').pop()

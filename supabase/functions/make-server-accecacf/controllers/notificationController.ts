@@ -1,36 +1,28 @@
-import { Context } from 'npm:hono'
-import { createClient } from 'npm:@supabase/supabase-js@2'
+import type { AppContext } from '../utils/types.ts'
 import * as notificationModel from '../models/notificationModel.ts'
+import { getAuthenticatedUser } from '../utils/auth.ts'
+import { handleError, ValidationError } from '../utils/errors.ts'
 
-const supabase = createClient(
-  Deno.env.get('SUPABASE_URL')!,
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-)
-
-async function getAuthenticatedUser(c: Context) {
-  const accessToken = c.req.header('Authorization')?.split(' ')[1]
-  const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken)
-  if (!user?.id) throw new Error('Unauthorized')
-  return user
-}
-
-export async function getNotifications(c: Context) {
+export async function getNotifications(c: AppContext) {
   try {
     const user = await getAuthenticatedUser(c)
 
     const notifications = await notificationModel.getNotifications(user.id)
     return c.json({ notifications })
   } catch (error) {
-    console.log('Get notifications error:', error)
-    return c.json({ error: 'Failed to fetch notifications' }, 500)
+    return handleError(c, error, 'Failed to fetch notifications')
   }
 }
 
-export async function sendNotification(c: Context) {
+export async function sendNotification(c: AppContext) {
   try {
     const user = await getAuthenticatedUser(c)
 
     const { recipientId, title, message, type = 'info', relatedIssueId } = await c.req.json()
+
+    if (!recipientId || !title || !message) {
+      throw new ValidationError('recipientId, title, and message are required')
+    }
 
     const notifications = await notificationModel.sendNotification({
       recipientId,
@@ -44,12 +36,11 @@ export async function sendNotification(c: Context) {
 
     return c.json({ success: true, notifications })
   } catch (error) {
-    console.log('Send notification error:', error)
-    return c.json({ error: 'Failed to send notification' }, 500)
+    return handleError(c, error, 'Failed to send notification')
   }
 }
 
-export async function markAsRead(c: Context) {
+export async function markAsRead(c: AppContext) {
   try {
     const user = await getAuthenticatedUser(c)
 
@@ -58,7 +49,6 @@ export async function markAsRead(c: Context) {
 
     return c.json({ success: true, notification: updatedNotification })
   } catch (error) {
-    console.log('Mark notification read error:', error)
-    return c.json({ error: 'Failed to mark notification as read' }, 500)
+    return handleError(c, error, 'Failed to mark notification as read')
   }
 }

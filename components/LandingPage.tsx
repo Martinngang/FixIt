@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { Button } from "./ui/button.tsx"
 import { Badge } from "./ui/badge.tsx"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select.tsx"
@@ -38,6 +39,7 @@ const translations = {
     features: 'Features',
     howItWorks: 'How it Works',
     testimonials: 'Testimonials',
+    openData: 'Open Data',
     getStarted: 'Get Started',
     signIn: 'Sign In',
     toggleTheme: 'Toggle theme',
@@ -100,6 +102,7 @@ const translations = {
     features: 'Fonctionnalités',
     howItWorks: 'Comment ça marche',
     testimonials: 'Témoignages',
+    openData: 'Données ouvertes',
     getStarted: 'Commencer',
     signIn: 'Se connecter',
     toggleTheme: 'Basculer le thème',
@@ -272,6 +275,12 @@ export function LandingPage({ language, setLanguage, onGetStarted, isDarkMode, t
                 <NavLink href="testimonials" onClick={() => scrollToSection('testimonials')}>
                   {t.testimonials}
                 </NavLink>
+                <Link
+                  to="/open-data"
+                  className="relative px-4 py-2 text-sm lg:text-base xl:text-lg font-medium transition-all duration-300 rounded-lg hover:bg-background/80 text-muted-foreground hover:text-foreground min-h-[48px] flex items-center"
+                >
+                  {t.openData}
+                </Link>
               </div>
               
               {/* Right Controls */}
@@ -346,6 +355,13 @@ export function LandingPage({ language, setLanguage, onGetStarted, isDarkMode, t
                     {t[section as keyof typeof t]}
                   </button>
                 ))}
+                <Link
+                  to="/open-data"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block w-full text-left py-3 px-4 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all duration-300 text-base lg:text-lg min-h-[48px]"
+                >
+                  {t.openData}
+                </Link>
                 <div className="pt-4 border-t border-border space-y-3">
                   <Button onClick={onGetStarted} variant="outline" className="w-full rounded-xl text-base lg:text-lg py-3 lg:py-4 border-border min-h-[48px]">
                     {t.signIn}

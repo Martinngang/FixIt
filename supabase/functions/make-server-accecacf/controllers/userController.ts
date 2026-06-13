@@ -1,54 +1,49 @@
-import { Context } from 'npm:hono'
-import { createClient } from 'npm:@supabase/supabase-js@2'
+import type { AppContext } from '../utils/types.ts'
 import * as userModel from '../models/userModel.ts'
+import { getAuthenticatedUser } from '../utils/auth.ts'
+import { handleError, ForbiddenError, ValidationError } from '../utils/errors.ts'
 
-const supabase = createClient(
-  Deno.env.get('SUPABASE_URL')!,
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-)
-
-async function getAuthenticatedUser(c: Context) {
-  const accessToken = c.req.header('Authorization')?.split(' ')[1]
-  const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken)
-  if (!user?.id) throw new Error('Unauthorized')
-  return user
-}
-
-export async function getUsers(c: Context) {
+export async function getUsers(c: AppContext) {
   try {
     const user = await getAuthenticatedUser(c)
     const userRole = userModel.getEffectiveUserRole(user, c.req)
-    if (userRole !== 'admin') return c.json({ error: 'Admin access required' }, 403)
+    if (userRole !== 'admin') throw new ForbiddenError('Admin access required')
 
     const users = await userModel.listUsers()
     return c.json({ users })
   } catch (error) {
-    console.log('Get users error:', error)
-    return c.json({ error: 'Failed to fetch users' }, 500)
+    return handleError(c, error, 'Failed to fetch users')
   }
 }
 
-export async function createUser(c: Context) {
+export async function createUser(c: AppContext) {
   try {
     const adminUser = await getAuthenticatedUser(c)
     const userRole = userModel.getEffectiveUserRole(adminUser, c.req)
-    if (userRole !== 'admin') return c.json({ error: 'Admin access required' }, 403)
+    if (userRole !== 'admin') throw new ForbiddenError('Admin access required')
 
     const { email, password, name, role, categories = [] } = await c.req.json()
+
+    if (!email || !password || !name) {
+      throw new ValidationError('email, password, and name are required')
+    }
+
+    if (role && !['citizen', 'technician', 'admin'].includes(role)) {
+      throw new ValidationError('Invalid role. Must be one of: citizen, technician, admin')
+    }
 
     const newUser = await userModel.createUser({ email, password, name, role, categories })
     return c.json({ success: true, user: newUser })
   } catch (error) {
-    console.log('Create user server error:', error)
-    return c.json({ error: 'Failed to create user' }, 500)
+    return handleError(c, error, 'Failed to create user')
   }
 }
 
-export async function updateUser(c: Context) {
+export async function updateUser(c: AppContext) {
   try {
     const adminUser = await getAuthenticatedUser(c)
     const userRole = userModel.getEffectiveUserRole(adminUser, c.req)
-    if (userRole !== 'admin') return c.json({ error: 'Admin access required' }, 403)
+    if (userRole !== 'admin') throw new ForbiddenError('Admin access required')
 
     const userId = c.req.param('id')
     const { role, name, email, categories } = await c.req.json()
@@ -58,7 +53,7 @@ export async function updateUser(c: Context) {
 
     if (role) {
       if (!['citizen', 'technician', 'admin'].includes(role)) {
-        return c.json({ error: 'Invalid role' }, 400)
+        throw new ValidationError('Invalid role. Must be one of: citizen, technician, admin')
       }
       updateData.user_metadata.role = role
     }
@@ -78,23 +73,21 @@ export async function updateUser(c: Context) {
     const updatedUser = await userModel.updateUser(userId, updateData)
     return c.json({ success: true, user: updatedUser })
   } catch (error) {
-    console.log('Update user error:', error)
-    return c.json({ error: 'Failed to update user' }, 500)
+    return handleError(c, error, 'Failed to update user')
   }
 }
 
-export async function deleteUser(c: Context) {
+export async function deleteUser(c: AppContext) {
   try {
     const adminUser = await getAuthenticatedUser(c)
     const userRole = userModel.getEffectiveUserRole(adminUser, c.req)
-    if (userRole !== 'admin') return c.json({ error: 'Admin access required' }, 403)
+    if (userRole !== 'admin') throw new ForbiddenError('Admin access required')
 
     const userId = c.req.param('id')
 
     await userModel.deleteUser(userId)
     return c.json({ success: true })
   } catch (error) {
-    console.log('Delete user error:', error)
-    return c.json({ error: 'Failed to delete user' }, 500)
+    return handleError(c, error, 'Failed to delete user')
   }
 }

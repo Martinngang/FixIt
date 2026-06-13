@@ -1,12 +1,13 @@
 
 import React, { useState, useEffect } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card.tsx"
-import { Badge } from "./ui/badge.tsx"
-import { Alert, AlertDescription } from "./ui/alert.tsx"
-import { Skeleton } from "./ui/skeleton.tsx"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card"
+import { Badge } from "./ui/badge"
+import { Alert, AlertDescription } from "./ui/alert"
+import { Skeleton } from "./ui/skeleton"
 import { User, Clock, MapPin, AlertCircle, RefreshCw, Camera, Wrench } from 'lucide-react'
-import { Button } from "./ui/button.tsx"
-import { projectId } from "../utils/supabase/info.ts"
+import { Button } from "./ui/button"
+import { projectId } from "../utils/supabase/info"
+import { IssueComments } from "./IssueComments"
 
 const translations = {
   en: {
@@ -395,6 +396,10 @@ export function MyIssues({ session, language = 'en', viewMode = 'citizen', tempR
                               </p>
                             </div>
                           )}
+
+                          <div className="flex justify-end">
+                            <IssueComments issueId={issue.id} session={session} language={language} tempRole={tempRole} />
+                          </div>
                         </div>
                       </CardContent>
                     </Card>

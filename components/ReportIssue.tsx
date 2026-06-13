@@ -7,8 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card.tsx"
 import { useToast } from "./ToastContext.tsx";
 import { Badge } from "./ui/badge.tsx"
-import { Camera, MapPin, AlertCircle, CheckCircle, Upload, Loader2, Trash2, Locate } from 'lucide-react'
+import { Camera, MapPin, AlertCircle, CheckCircle, Upload, Loader2, Trash2, Locate, Scan } from 'lucide-react'
 import { projectId } from "../utils/supabase/info.ts"
+import { ARCamera } from "./ARCamera.tsx"
 
 const categories = [
   { en: 'Road & Transportation', fr: 'Routes et Transport' },
@@ -58,6 +59,8 @@ const translations = {
     photoNote: 'Adding a photo helps authorities understand the issue better',
     takePhoto: 'Take Photo',
     uploadPhoto: 'Upload Photo',
+    arCamera: 'AR Camera',
+    arCaptureSuccess: 'Photo captured with precise AR location!',
     removePhoto: 'Remove Photo',
     getCurrentLocation: 'Get Current Location',
     gettingLocation: 'Getting location...',
@@ -86,6 +89,8 @@ const translations = {
     photoNote: 'Ajouter une photo aide les autorités à mieux comprendre le problème',
     takePhoto: 'Prendre une photo',
     uploadPhoto: 'Télécharger une photo',
+    arCamera: 'Caméra RA',
+    arCaptureSuccess: 'Photo capturée avec une position RA précise!',
     removePhoto: 'Supprimer la photo',
     getCurrentLocation: 'Obtenir la position actuelle',
     gettingLocation: 'Obtention de la position...',
@@ -113,6 +118,7 @@ export function ReportIssue({ session, language = 'en' }: { session: any; langua
   })
   const [photo, setPhoto] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const [showARCamera, setShowARCamera] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
 
@@ -214,6 +220,38 @@ export function ReportIssue({ session, language = 'en' }: { session: any; langua
     )
   }
 
+  const handleARCapture = async (dataUrl: string, coords: { lat: number; lng: number }) => {
+    try {
+      const res = await fetch(dataUrl)
+      const blob = await res.blob()
+      const file = new File([blob], `ar-capture-${Date.now()}.jpg`, { type: 'image/jpeg' })
+      handlePhotoSelect(file)
+    } catch (err) {
+      console.error('Failed to process AR photo:', err)
+    }
+
+    setFormData(prev => ({ ...prev, coordinates: coords }))
+    setShowARCamera(false)
+    addToast(t.arCaptureSuccess, 'success')
+
+    try {
+      const response = await fetch(
+        `https://api.opencagedata.com/geocode/v1/json?q=${coords.lat}+${coords.lng}&key=demo&limit=1`
+      )
+      const data = await response.json()
+      const formatted = data.results?.[0]?.formatted
+      setFormData(prev => ({
+        ...prev,
+        location: prev.location || formatted || `${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}`
+      }))
+    } catch {
+      setFormData(prev => ({
+        ...prev,
+        location: prev.location || `${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}`
+      }))
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -295,6 +333,13 @@ export function ReportIssue({ session, language = 'en' }: { session: any; langua
 
   return (
     <>
+      {showARCamera && (
+        <ARCamera
+          language={language}
+          onCapture={handleARCapture}
+          onClose={() => setShowARCamera(false)}
+        />
+      )}
       <div className="min-h-screen bg-background p-4">
         <div className="max-w-2xl mx-auto">
           <Card className="bg-card border-border shadow-lg">
@@ -425,7 +470,7 @@ export function ReportIssue({ session, language = 'en' }: { session: any; langua
                   </p>
                   
                   {!photoPreview ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                       <Button
                         type="button"
                         variant="outline"
@@ -443,6 +488,15 @@ export function ReportIssue({ session, language = 'en' }: { session: any; langua
                       >
                         <Upload className="h-4 w-4" />
                         <span>{t.uploadPhoto}</span>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setShowARCamera(true)}
+                        className="flex items-center justify-center space-x-2 h-12 bg-background border-border text-foreground hover:bg-muted"
+                      >
+                        <Scan className="h-4 w-4" />
+                        <span>{t.arCamera}</span>
                       </Button>
                     </div>
                   ) : (
@@ -463,7 +517,7 @@ export function ReportIssue({ session, language = 'en' }: { session: any; langua
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <Button
                           type="button"
                           variant="outline"
@@ -481,6 +535,15 @@ export function ReportIssue({ session, language = 'en' }: { session: any; langua
                         >
                           <Upload className="h-4 w-4" />
                           <span>{t.uploadPhoto}</span>
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setShowARCamera(true)}
+                          className="flex items-center justify-center space-x-2 bg-background border-border text-foreground hover:bg-muted"
+                        >
+                          <Scan className="h-4 w-4" />
+                          <span>{t.arCamera}</span>
                         </Button>
                       </div>
                     </div>

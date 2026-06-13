@@ -1,15 +1,16 @@
 
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card.tsx"
-import { Badge } from "./ui/badge.tsx"
-import { Button } from "./ui/button.tsx"
-import { Alert, AlertDescription } from "./ui/alert.tsx"
-import { Skeleton } from "./ui/skeleton.tsx"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs.tsx"
-import { Progress } from "./ui/progress.tsx"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card"
+import { Badge } from "./ui/badge"
+import { Button } from "./ui/button"
+import { Alert, AlertDescription } from "./ui/alert"
+import { Skeleton } from "./ui/skeleton"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs"
+import { Progress } from "./ui/progress"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts'
-import { MapPin, Clock, User, AlertTriangle, CheckCircle, XCircle, AlertCircle, TrendingUp, Calendar, Activity } from 'lucide-react'
-import { projectId, publicAnonKey } from "../utils/supabase/info.ts"
+import { MapPin, Clock, User, AlertTriangle, CheckCircle, XCircle, AlertCircle, TrendingUp, Calendar, Activity, ThumbsUp } from 'lucide-react'
+import { projectId, publicAnonKey } from "../utils/supabase/info"
+import { IssueComments } from "./IssueComments"
 
 interface Issue {
   id: string
@@ -26,6 +27,8 @@ interface Issue {
   adminNote?: string
   photoUrl?: string
   coordinates?: { lat: number; lng: number }
+  upvotes?: number
+  upvotedBy?: string[]
 }
 
 interface Analytics {
@@ -105,7 +108,8 @@ const translations = {
     location: 'Location',
     reportedBy: 'Reported by',
     category: 'Category',
-    adminNote: 'Admin Note'
+    adminNote: 'Admin Note',
+    upvote: 'Upvote'
   },
   fr: {
     dashboard: 'Tableau de bord',
@@ -127,7 +131,8 @@ const translations = {
     location: 'Emplacement',
     reportedBy: 'Signalé par',
     category: 'Catégorie',
-    adminNote: 'Note admin'
+    adminNote: 'Note admin',
+    upvote: 'Voter'
   }
 }
 
@@ -190,6 +195,26 @@ export function Dashboard({ session, language = 'en' }: { session: any; language
   useEffect(() => {
     fetchData()
   }, [])
+
+  const handleUpvote = async (issueId: string) => {
+    if (!session?.access_token) return
+
+    try {
+      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-accecacf/issues/${issueId}/upvote`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      })
+
+      if (!response.ok) return
+
+      const data = await response.json()
+      setIssues(prev => prev.map(issue => issue.id === issueId ? data.issue : issue))
+    } catch (err) {
+      console.error('Upvote error:', err)
+    }
+  }
 
   // Prepare chart data
   const categoryData = analytics ? Object.entries(analytics.categoryBreakdown).map(([name, value]) => ({
@@ -689,11 +714,25 @@ export function Dashboard({ session, language = 'en' }: { session: any; language
                                 <span className="text-xs text-muted-foreground">
                                   {t.category}: {issue.category}
                                 </span>
-                                {issue.adminNote && (
-                                  <span className="text-xs text-blue-600 dark:text-blue-400">
-                                    {t.adminNote}: {issue.adminNote}
-                                  </span>
-                                )}
+                                <div className="flex items-center space-x-3">
+                                  {issue.adminNote && (
+                                    <span className="text-xs text-blue-600 dark:text-blue-400">
+                                      {t.adminNote}: {issue.adminNote}
+                                    </span>
+                                  )}
+                                  <Button
+                                    variant={issue.upvotedBy?.includes(session?.user?.id) ? 'default' : 'outline'}
+                                    size="sm"
+                                    className="h-7 px-2"
+                                    onClick={() => handleUpvote(issue.id)}
+                                    disabled={!session?.access_token}
+                                    title={t.upvote}
+                                  >
+                                    <ThumbsUp className="h-3.5 w-3.5 mr-1" />
+                                    {issue.upvotes || 0}
+                                  </Button>
+                                  <IssueComments issueId={issue.id} session={session} language={language} />
+                                </div>
                               </div>
                             </div>
                           ))}

@@ -1,5 +1,8 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import * as kv from '../kv_store.tsx'
+import { NotFoundError, ConflictError, ForbiddenError } from '../utils/errors.ts'
+import { classifyIssue } from '../utils/gemini.ts'
+import { getCompletedTaskCount } from './volunteerModel.ts'
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -19,10 +22,24 @@ export async function initializeStorage() {
 }
 
 export async function createIssue(issueData: any) {
+  // Let AI suggest a category/priority from the description for more
+  // accurate routing. Falls back to the citizen's own selections if the
+  // classifier is unavailable or fails - this must never block reporting.
+  const classification = await classifyIssue(issueData.title, issueData.description)
+
   const issue = {
     id: crypto.randomUUID(),
     ...issueData,
+    category: classification?.category || issueData.category,
+    priority: classification?.priority || issueData.priority,
+    reportedCategory: issueData.category,
+    reportedPriority: issueData.priority,
+    aiClassification: classification,
+    sentiment: classification?.sentiment || 'neutral',
+    flagged: classification?.flagged || false,
     status: 'reported',
+    upvotes: 0,
+    upvotedBy: [],
     reportedAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   }
@@ -114,7 +131,7 @@ export async function getTechnicianTasks(userId: string) {
 
 export async function updateIssue(issueId: string, updates: any) {
   const issue = await kv.get(`issue:${issueId}`)
-  if (!issue) throw new Error('Issue not found')
+  if (!issue) throw new NotFoundError('Issue not found')
 
   const updatedIssue = {
     ...issue,
@@ -128,7 +145,7 @@ export async function updateIssue(issueId: string, updates: any) {
 
 export async function assignIssue(issueId: string, technicianId: string, assignedBy: string, notes?: string) {
   const issue = await kv.get(`issue:${issueId}`)
-  if (!issue) throw new Error('Issue not found')
+  if (!issue) throw new NotFoundError('Issue not found')
 
   const updatedIssue = {
     ...issue,
@@ -144,10 +161,32 @@ export async function assignIssue(issueId: string, technicianId: string, assigne
   return updatedIssue
 }
 
+export async function toggleUpvote(issueId: string, userId: string) {
+  const issue = await kv.get(`issue:${issueId}`)
+  if (!issue) throw new NotFoundError('Issue not found')
+
+  const upvotedBy: string[] = issue.upvotedBy || []
+  const hasUpvoted = upvotedBy.includes(userId)
+
+  const updatedUpvotedBy = hasUpvoted
+    ? upvotedBy.filter((id: string) => id !== userId)
+    : [...upvotedBy, userId]
+
+  const updatedIssue = {
+    ...issue,
+    upvotedBy: updatedUpvotedBy,
+    upvotes: updatedUpvotedBy.length,
+    updatedAt: new Date().toISOString()
+  }
+
+  await kv.set(`issue:${issueId}`, updatedIssue)
+  return updatedIssue
+}
+
 export async function assignToMe(issueId: string, userId: string) {
   const issue = await kv.get(`issue:${issueId}`)
-  if (!issue) throw new Error('Issue not found')
-  if (issue.assignedTo) throw new Error('Issue already assigned')
+  if (!issue) throw new NotFoundError('Issue not found')
+  if (issue.assignedTo) throw new ConflictError('Issue already assigned')
 
   const updatedIssue = {
     ...issue,
@@ -164,8 +203,8 @@ export async function assignToMe(issueId: string, userId: string) {
 
 export async function uploadPhoto(issueId: string, file: File, userId: string) {
   const issue = await kv.get(`issue:${issueId}`)
-  if (!issue) throw new Error('Issue not found')
-  if (issue.reportedBy !== userId) throw new Error('Only the issue reporter can upload photos')
+  if (!issue) throw new NotFoundError('Issue not found')
+  if (issue.reportedBy !== userId) throw new ForbiddenError('Only the issue reporter can upload photos')
 
   const fileExtension = file.name.split('.').pop()
   const fileName = `${issueId}_${Date.now()}.${fileExtension}`
@@ -194,7 +233,7 @@ export async function uploadPhoto(issueId: string, file: File, userId: string) {
 
 export async function updateStatus(issueId: string, status: string, updatedBy: string, adminNote?: string) {
   const existingIssue = await kv.get(`issue:${issueId}`)
-  if (!existingIssue) throw new Error('Issue not found')
+  if (!existingIssue) throw new NotFoundError('Issue not found')
 
   const updatedIssue = {
     ...existingIssue,
@@ -294,4 +333,156 @@ export async function getAnalytics() {
   }
 
   return analytics
+}
+
+// Surfaces recurring problem locations so authorities can plan proactive
+// maintenance instead of reacting to each report individually. Groups all
+// issues by location, keeping only locations with repeat reports.
+export async function getHotspots() {
+  const issues = await kv.getByPrefix('issue:')
+  const now = new Date()
+  const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
+
+  const locations = new Map<string, {
+    location: string
+    totalIssues: number
+    recentIssues: number
+    flaggedIssues: number
+    categories: Record<string, number>
+    resolutionTimes: number[]
+  }>()
+
+  for (const issue of issues) {
+    const key = (issue.location || '').trim().toLowerCase()
+    if (!key) continue
+
+    if (!locations.has(key)) {
+      locations.set(key, {
+        location: issue.location,
+        totalIssues: 0,
+        recentIssues: 0,
+        flaggedIssues: 0,
+        categories: {},
+        resolutionTimes: [],
+      })
+    }
+
+    const entry = locations.get(key)!
+    entry.totalIssues++
+    if (new Date(issue.reportedAt) >= ninetyDaysAgo) entry.recentIssues++
+    if (issue.flagged) entry.flaggedIssues++
+    entry.categories[issue.category] = (entry.categories[issue.category] || 0) + 1
+
+    if (issue.status === 'resolved') {
+      const reported = new Date(issue.reportedAt).getTime()
+      const resolved = new Date(issue.updatedAt).getTime()
+      entry.resolutionTimes.push(resolved - reported)
+    }
+  }
+
+  return Array.from(locations.values())
+    .filter(entry => entry.totalIssues >= 2)
+    .map(entry => ({
+      location: entry.location,
+      totalIssues: entry.totalIssues,
+      recentIssues: entry.recentIssues,
+      flaggedIssues: entry.flaggedIssues,
+      topCategory: Object.entries(entry.categories).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Other',
+      categories: entry.categories,
+      avgResolutionDays: entry.resolutionTimes.length > 0
+        ? Math.round(entry.resolutionTimes.reduce((sum, t) => sum + t, 0) / entry.resolutionTimes.length / (1000 * 60 * 60 * 24))
+        : null,
+    }))
+    .sort((a, b) => b.totalIssues - a.totalIssues)
+    .slice(0, 10)
+}
+
+// Read-only, anonymized issue feed for the public Open Data API. Strips any
+// fields that identify the reporter, assigned staff, or internal moderation
+// state, leaving only the civic information researchers/planners care about.
+export async function getPublicIssues({ status, category, limit = 50, offset = 0 }: {
+  status?: string
+  category?: string
+  limit?: number
+  offset?: number
+}) {
+  let issues = await kv.getByPrefix('issue:')
+
+  if (status) issues = issues.filter(issue => issue.status === status)
+  if (category) issues = issues.filter(issue => issue.category === category)
+
+  issues = issues.sort((a, b) => new Date(b.reportedAt).getTime() - new Date(a.reportedAt).getTime())
+
+  const total = issues.length
+  const page = issues.slice(offset, offset + limit)
+
+  return {
+    total,
+    limit,
+    offset,
+    issues: page.map(issue => ({
+      id: issue.id,
+      title: issue.title,
+      description: issue.description,
+      category: issue.category,
+      location: issue.location,
+      coordinates: issue.coordinates ?? null,
+      priority: issue.priority,
+      status: issue.status,
+      upvotes: issue.upvotes || 0,
+      reportedAt: issue.reportedAt,
+      updatedAt: issue.updatedAt,
+    })),
+  }
+}
+
+export const REPUTATION_POINTS = {
+  issueReported: 5,
+  issueResolved: 15,
+  upvoteReceived: 2,
+  volunteerTaskCompleted: 10,
+} as const
+
+export const REPUTATION_BADGES = [
+  { key: 'newcomer', threshold: 0 },
+  { key: 'active_citizen', threshold: 25 },
+  { key: 'civic_contributor', threshold: 75 },
+  { key: 'community_champion', threshold: 150 },
+] as const
+
+// Derives a citizen's reputation purely from their existing issue history -
+// no separate point ledger to keep in sync. Rewards reporting, having
+// reports resolved, and community endorsement via upvotes received.
+export async function getUserReputation(userId: string) {
+  const issues = await getUserIssues(userId)
+
+  const reported = issues.length
+  const resolved = issues.filter(issue => issue.status === 'resolved').length
+  const upvotesReceived = issues.reduce((sum, issue) => sum + (issue.upvotes || 0), 0)
+  const volunteered = await getCompletedTaskCount(userId)
+
+  const points =
+    reported * REPUTATION_POINTS.issueReported +
+    resolved * REPUTATION_POINTS.issueResolved +
+    upvotesReceived * REPUTATION_POINTS.upvoteReceived +
+    volunteered * REPUTATION_POINTS.volunteerTaskCompleted
+
+  let badge: typeof REPUTATION_BADGES[number]['key'] = REPUTATION_BADGES[0].key
+  let nextBadge: typeof REPUTATION_BADGES[number] | null = null
+
+  for (let i = 0; i < REPUTATION_BADGES.length; i++) {
+    if (points >= REPUTATION_BADGES[i].threshold) {
+      badge = REPUTATION_BADGES[i].key
+      nextBadge = REPUTATION_BADGES[i + 1] || null
+    }
+  }
+
+  return {
+    points,
+    badge,
+    nextBadge: nextBadge
+      ? { key: nextBadge.key, pointsNeeded: nextBadge.threshold - points }
+      : null,
+    breakdown: { reported, resolved, upvotesReceived, volunteered },
+  }
 }

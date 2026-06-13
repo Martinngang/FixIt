@@ -1,35 +1,24 @@
-import { Context } from 'npm:hono'
-import { createClient } from 'npm:@supabase/supabase-js@2'
+import type { AppContext } from '../utils/types.ts'
 import * as issueModel from '../models/issueModel.ts'
 import * as notificationModel from '../models/notificationModel.ts'
 import { getEffectiveUserRole } from '../models/userModel.ts'
+import { getAuthenticatedUser } from '../utils/auth.ts'
+import { handleError, ForbiddenError, NotFoundError, ConflictError, ValidationError } from '../utils/errors.ts'
 
-const supabase = createClient(
-  Deno.env.get('SUPABASE_URL')!,
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-)
-
-async function getAuthenticatedUser(c: Context) {
-  const accessToken = c.req.header('Authorization')?.split(' ')[1]
-  const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken)
-  if (!user?.id) throw new Error('Unauthorized')
-  return user
-}
-
-export async function assignToMe(c: Context) {
+export async function assignToMe(c: AppContext) {
   try {
     const user = await getAuthenticatedUser(c)
     const userRole = getEffectiveUserRole(user, c.req)
-    if (userRole !== 'technician') return c.json({ error: 'Technician access required' }, 403)
+    if (userRole !== 'technician') throw new ForbiddenError('Technician access required')
 
     const issueId = c.req.param('id')
     const issue = await issueModel.getIssue(issueId)
-    if (!issue) return c.json({ error: 'Issue not found' }, 404)
-    if (issue.assignedTo) return c.json({ error: 'Issue already assigned' }, 400)
+    if (!issue) throw new NotFoundError('Issue not found')
+    if (issue.assignedTo) throw new ConflictError('Issue already assigned')
 
     const updatedIssue = await issueModel.assignToMe(issueId, user.id)
 
-    const notification = await notificationModel.createNotification({
+    await notificationModel.createNotification({
       recipientId: user.id,
       title: 'Issue Assigned',
       message: `You have assigned yourself to issue: ${issue.title}`,
@@ -41,22 +30,34 @@ export async function assignToMe(c: Context) {
 
     return c.json({ success: true, issue: updatedIssue })
   } catch (error) {
-    console.log('Self-assign issue error:', error)
-    return c.json({ error: 'Failed to assign issue' }, 500)
+    return handleError(c, error, 'Failed to assign issue')
   }
 }
 
-export async function updateIssue(c: Context) {
+export async function toggleUpvote(c: AppContext) {
+  try {
+    const user = await getAuthenticatedUser(c)
+
+    const issueId = c.req.param('id')
+    const updatedIssue = await issueModel.toggleUpvote(issueId, user.id)
+
+    return c.json({ success: true, issue: updatedIssue })
+  } catch (error) {
+    return handleError(c, error, 'Failed to update upvote')
+  }
+}
+
+export async function updateIssue(c: AppContext) {
   try {
     const user = await getAuthenticatedUser(c)
     const userRole = getEffectiveUserRole(user, c.req)
-    if (userRole !== 'technician') return c.json({ error: 'Technician access required' }, 403)
+    if (userRole !== 'technician') throw new ForbiddenError('Technician access required')
 
     const issueId = c.req.param('id')
     const issue = await issueModel.getIssue(issueId)
-    if (!issue) return c.json({ error: 'Issue not found' }, 404)
+    if (!issue) throw new NotFoundError('Issue not found')
 
-    if (issue.assignedTo !== user.id) return c.json({ error: 'Not assigned to this issue' }, 403)
+    if (issue.assignedTo !== user.id) throw new ForbiddenError('Not assigned to this issue')
 
     const { status, technicianNote, assignedTo, estimatedCompletionDate } = await c.req.json()
 
@@ -69,16 +70,19 @@ export async function updateIssue(c: Context) {
 
     return c.json({ success: true, issue: updatedIssue })
   } catch (error) {
-    console.log('Update issue error:', error)
-    return c.json({ error: 'Failed to update issue' }, 500)
+    return handleError(c, error, 'Failed to update issue')
   }
 }
 
-export async function createIssue(c: Context) {
+export async function createIssue(c: AppContext) {
   try {
     const user = await getAuthenticatedUser(c)
 
     const { title, description, category, location, priority = 'medium', coordinates, photo } = await c.req.json()
+
+    if (!title || !description || !category || !location) {
+      throw new ValidationError('title, description, category, and location are required')
+    }
 
     const issueData = {
       title,
@@ -97,26 +101,25 @@ export async function createIssue(c: Context) {
 
     return c.json({ success: true, issue: finalIssue })
   } catch (error) {
-    console.log('Create issue error:', error)
-    return c.json({ error: 'Failed to create issue' }, 500)
+    return handleError(c, error, 'Failed to create issue')
   }
 }
 
-export async function uploadPhoto(c: Context) {
+export async function uploadPhoto(c: AppContext) {
   try {
     const user = await getAuthenticatedUser(c)
 
     const issueId = c.req.param('id')
     const issue = await issueModel.getIssue(issueId)
 
-    if (!issue) return c.json({ error: 'Issue not found' }, 404)
+    if (!issue) throw new NotFoundError('Issue not found')
 
-    if (issue.reportedBy !== user.id) return c.json({ error: 'Only the issue reporter can upload photos' }, 403)
+    if (issue.reportedBy !== user.id) throw new ForbiddenError('Only the issue reporter can upload photos')
 
     const formData = await c.req.formData()
     const file = formData.get('photo') as File
 
-    if (!file) return c.json({ error: 'No photo file provided' }, 400)
+    if (!file) throw new ValidationError('No photo file provided')
 
     const updatedIssue = await issueModel.uploadPhoto(issueId, file, user.id)
 
@@ -126,36 +129,33 @@ export async function uploadPhoto(c: Context) {
       message: 'Photo uploaded successfully'
     })
   } catch (error) {
-    console.log('Photo upload server error:', error)
-    return c.json({ error: 'Internal server error during photo upload' }, 500)
+    return handleError(c, error, 'Internal server error during photo upload')
   }
 }
 
-export async function getAllIssues(c: Context) {
+export async function getAllIssues(c: AppContext) {
   try {
     const issues = await issueModel.getAllIssues()
     return c.json({ issues })
   } catch (error) {
-    console.log('Get issues error:', error)
-    return c.json({ error: 'Failed to fetch issues' }, 500)
+    return handleError(c, error, 'Failed to fetch issues')
   }
 }
 
-export async function getIssue(c: Context) {
+export async function getIssue(c: AppContext) {
   try {
     const issueId = c.req.param('id')
     const issue = await issueModel.getIssue(issueId)
 
-    if (!issue) return c.json({ error: 'Issue not found' }, 404)
+    if (!issue) throw new NotFoundError('Issue not found')
 
     return c.json({ issue })
   } catch (error) {
-    console.log('Get single issue error:', error)
-    return c.json({ error: 'Failed to fetch issue' }, 500)
+    return handleError(c, error, 'Failed to fetch issue')
   }
 }
 
-export async function getUserIssues(c: Context) {
+export async function getUserIssues(c: AppContext) {
   try {
     const user = await getAuthenticatedUser(c)
 
@@ -163,12 +163,11 @@ export async function getUserIssues(c: Context) {
 
     return c.json({ issues })
   } catch (error) {
-    console.log('Get user issues error:', error)
-    return c.json({ error: 'Failed to fetch user issues' }, 500)
+    return handleError(c, error, 'Failed to fetch user issues')
   }
 }
 
-export async function getTechnicianTasks(c: Context) {
+export async function getTechnicianTasks(c: AppContext) {
   try {
     const user = await getAuthenticatedUser(c)
 
@@ -176,59 +175,68 @@ export async function getTechnicianTasks(c: Context) {
 
     return c.json({ issues })
   } catch (error) {
-    console.log('Get technician tasks error:', error)
-    return c.json({ error: 'Failed to fetch assigned tasks' }, 500)
+    return handleError(c, error, 'Failed to fetch assigned tasks')
   }
 }
 
-export async function updateStatus(c: Context) {
+export async function updateStatus(c: AppContext) {
   try {
     const user = await getAuthenticatedUser(c)
 
     const issueId = c.req.param('id')
     const { status, adminNote } = await c.req.json()
 
+    if (!status) throw new ValidationError('status is required')
+
     const updatedIssue = await issueModel.updateStatus(issueId, status, user.id, adminNote)
 
     return c.json({ success: true, issue: updatedIssue })
   } catch (error) {
-    console.log('Update issue status error:', error)
-    return c.json({ error: 'Failed to update issue status' }, 500)
+    return handleError(c, error, 'Failed to update issue status')
   }
 }
 
-export async function getStats(c: Context) {
+export async function getStats(c: AppContext) {
   try {
     const stats = await issueModel.getStats()
     return c.json({ stats })
   } catch (error) {
-    console.log('Get stats error:', error)
-    return c.json({ error: 'Failed to fetch statistics' }, 500)
+    return handleError(c, error, 'Failed to fetch statistics')
   }
 }
 
-export async function getAnalytics(c: Context) {
+export async function getAnalytics(c: AppContext) {
   try {
     const analytics = await issueModel.getAnalytics()
     return c.json({ analytics })
   } catch (error) {
-    console.log('Get analytics error:', error)
-    return c.json({ error: 'Failed to fetch analytics' }, 500)
+    return handleError(c, error, 'Failed to fetch analytics')
   }
 }
 
-export async function assignIssue(c: Context) {
+export async function getHotspots(c: AppContext) {
+  try {
+    const hotspots = await issueModel.getHotspots()
+    return c.json({ hotspots })
+  } catch (error) {
+    return handleError(c, error, 'Failed to fetch hotspots')
+  }
+}
+
+export async function assignIssue(c: AppContext) {
   try {
     const user = await getAuthenticatedUser(c)
     const userRole = getEffectiveUserRole(user, c.req)
-    if (userRole !== 'admin') return c.json({ error: 'Admin access required' }, 403)
+    if (userRole !== 'admin') throw new ForbiddenError('Admin access required')
 
     const issueId = c.req.param('id')
     const { technicianId, notes } = await c.req.json()
 
+    if (!technicianId) throw new ValidationError('technicianId is required')
+
     const updatedIssue = await issueModel.assignIssue(issueId, technicianId, user.id, notes)
 
-    const notification = await notificationModel.createNotification({
+    await notificationModel.createNotification({
       recipientId: technicianId,
       title: 'New Assignment',
       message: `You have been assigned to issue: ${updatedIssue.title}`,
@@ -240,7 +248,6 @@ export async function assignIssue(c: Context) {
 
     return c.json({ success: true, issue: updatedIssue })
   } catch (error) {
-    console.log('Assign issue error:', error)
-    return c.json({ error: 'Failed to assign issue' }, 500)
+    return handleError(c, error, 'Failed to assign issue')
   }
 }

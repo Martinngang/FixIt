@@ -1,32 +1,20 @@
-import { Context } from 'npm:hono'
-import { createClient } from 'npm:@supabase/supabase-js@2'
+import type { AppContext } from '../utils/types.ts'
 import * as profileModel from '../models/profileModel.ts'
+import { getAuthenticatedUser } from '../utils/auth.ts'
+import { handleError, ValidationError } from '../utils/errors.ts'
 
-const supabase = createClient(
-  Deno.env.get('SUPABASE_URL')!,
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-)
-
-async function getAuthenticatedUser(c: Context) {
-  const accessToken = c.req.header('Authorization')?.split(' ')[1]
-  const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken)
-  if (!user?.id) throw new Error('Unauthorized')
-  return user
-}
-
-export async function getProfile(c: Context) {
+export async function getProfile(c: AppContext) {
   try {
     const user = await getAuthenticatedUser(c)
 
     const userData = await profileModel.getProfile(user.id, user)
     return c.json({ user: userData })
   } catch (error) {
-    console.log('Get profile error:', error)
-    return c.json({ error: 'Failed to fetch profile' }, 500)
+    return handleError(c, error, 'Failed to fetch profile')
   }
 }
 
-export async function updateProfile(c: Context) {
+export async function updateProfile(c: AppContext) {
   try {
     const user = await getAuthenticatedUser(c)
 
@@ -35,19 +23,30 @@ export async function updateProfile(c: Context) {
     const updatedUser = await profileModel.updateProfile(user.id, user, { name, phone, address })
     return c.json({ success: true, user: updatedUser })
   } catch (error) {
-    console.log('Update profile error:', error)
-    return c.json({ error: 'Failed to update profile' }, 500)
+    return handleError(c, error, 'Failed to update profile')
   }
 }
 
-export async function uploadAvatar(c: Context) {
+export async function getLeaderboard(c: AppContext) {
+  try {
+    const limitParam = c.req.query('limit')
+    const limit = limitParam ? Math.min(Math.max(Number(limitParam) || 20, 1), 100) : 20
+
+    const leaderboard = await profileModel.getLeaderboard(limit)
+    return c.json({ leaderboard })
+  } catch (error) {
+    return handleError(c, error, 'Failed to fetch leaderboard')
+  }
+}
+
+export async function uploadAvatar(c: AppContext) {
   try {
     const user = await getAuthenticatedUser(c)
 
     const formData = await c.req.formData()
     const file = formData.get('avatar') as File
 
-    if (!file) return c.json({ error: 'No avatar file provided' }, 400)
+    if (!file) throw new ValidationError('No avatar file provided')
 
     const avatarUrl = await profileModel.uploadAvatar(user.id, file)
     return c.json({
@@ -56,7 +55,6 @@ export async function uploadAvatar(c: Context) {
       message: 'Avatar uploaded successfully'
     })
   } catch (error) {
-    console.log('Avatar upload server error:', error)
-    return c.json({ error: 'Internal server error during avatar upload' }, 500)
+    return handleError(c, error, 'Internal server error during avatar upload')
   }
 }
