@@ -56,7 +56,8 @@ export async function getPublicIssues(c: AppContext) {
 
 export async function getPublicStats(c: AppContext) {
   try {
-    const stats = await issueModel.getStats()
+    // Open data is city-only - never include private organization data.
+    const stats = await issueModel.getStats(null)
     return c.json({ stats })
   } catch (error) {
     return handleError(c, error, 'Failed to fetch public statistics')
@@ -65,7 +66,7 @@ export async function getPublicStats(c: AppContext) {
 
 export async function getPublicAnalytics(c: AppContext) {
   try {
-    const analytics = await issueModel.getAnalytics()
+    const analytics = await issueModel.getAnalytics(null)
     return c.json({ analytics })
   } catch (error) {
     return handleError(c, error, 'Failed to fetch public analytics')
@@ -74,7 +75,7 @@ export async function getPublicAnalytics(c: AppContext) {
 
 export async function getPublicHotspots(c: AppContext) {
   try {
-    const hotspots = await issueModel.getHotspots()
+    const hotspots = await issueModel.getHotspots(null)
     return c.json({ hotspots })
   } catch (error) {
     return handleError(c, error, 'Failed to fetch public hotspots')

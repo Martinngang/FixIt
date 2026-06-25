@@ -8,9 +8,12 @@ import { Skeleton } from "./ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs"
 import { Progress } from "./ui/progress"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts'
-import { MapPin, Clock, User, AlertTriangle, CheckCircle, XCircle, AlertCircle, TrendingUp, Calendar, Activity, ThumbsUp } from 'lucide-react'
+import { MapPin, Clock, User, AlertTriangle, CheckCircle, AlertCircle, TrendingUp, Calendar, Activity, ThumbsUp } from 'lucide-react'
 import { projectId, publicAnonKey } from "../utils/supabase/info"
-import { IssueComments } from "./IssueComments"
+import { Comments } from "./Comments"
+import { EntityCard } from "./ui/entity-card"
+import { StatusBadge } from "./ui/status-badge"
+import { EmptyState } from "./ui/empty-state"
 
 interface Issue {
   id: string
@@ -42,50 +45,17 @@ interface Analytics {
   statusFlow: Record<string, number>
 }
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8']
+const CHART_COLORS = ['#6366F1', '#22D3EE', '#10B981', '#F59E0B', '#F43F5E']
+const AXIS_COLOR = '#94A3B8'
 
-const getStatusIcon = (status: string) => {
-  switch (status) {
-    case 'reported':
-      return <AlertCircle className="h-4 w-4" />
-    case 'in-progress':
-      return <Clock className="h-4 w-4" />
-    case 'resolved':
-      return <CheckCircle className="h-4 w-4" />
-    case 'rejected':
-      return <XCircle className="h-4 w-4" />
-    default:
-      return <AlertCircle className="h-4 w-4" />
-  }
+const tooltipStyle = {
+  backgroundColor: 'hsl(var(--card))',
+  border: '1px solid hsl(var(--border))',
+  borderRadius: '0.75rem',
+  color: 'hsl(var(--foreground))',
+  fontSize: '0.875rem',
 }
 
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'reported':
-      return 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200'
-    case 'in-progress':
-      return 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200'
-    case 'resolved':
-      return 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200'
-    case 'rejected':
-      return 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200'
-    default:
-      return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
-  }
-}
-
-const getPriorityColor = (priority: string) => {
-  switch (priority) {
-    case 'high':
-      return 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200'
-    case 'medium':
-      return 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200'
-    case 'low':
-      return 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200'
-    default:
-      return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
-  }
-}
 
 const translations = {
   en: {
@@ -153,7 +123,7 @@ export function Dashboard({ session, language = 'en' }: { session: any; language
       const [issuesResponse, analyticsResponse] = await Promise.all([
         fetch(`https://${projectId}.supabase.co/functions/v1/make-server-accecacf/issues`, {
           headers: {
-            'Authorization': `Bearer ${publicAnonKey}`
+            'Authorization': `Bearer ${session?.access_token || publicAnonKey}`
           }
         }).catch(err => {
           console.error('Issues fetch error:', err)
@@ -161,7 +131,7 @@ export function Dashboard({ session, language = 'en' }: { session: any; language
         }),
         fetch(`https://${projectId}.supabase.co/functions/v1/make-server-accecacf/analytics`, {
           headers: {
-            'Authorization': `Bearer ${publicAnonKey}`
+            'Authorization': `Bearer ${session?.access_token || publicAnonKey}`
           }
         }).catch(err => {
           console.error('Analytics fetch error:', err)
@@ -234,518 +204,325 @@ export function Dashboard({ session, language = 'en' }: { session: any; language
     reports: item.count
   })) : []
 
-  return (
-    <>
-      <style>{`
-        :root {
-          --background: #F8FAFC;
-          --foreground: #1E293B;
-          --card: #FFFFFF;
-          --muted-foreground: #64748B;
-          --primary: #2563EB;
-          --border: #E2E8F0;
-          --muted: #F1F5F9;
-          --destructive: #EF4444;
-          --destructive-foreground: #FFFFFF;
-          --yellow-100: #FEF9C3;
-          --yellow-200: #FEF08A;
-          --yellow-600: #EAB308;
-          --yellow-800: #CA8A04;
-          --yellow-900: #A16207;
-          --blue-100: #DBEAFE;
-          --blue-200: #BFDBFE;
-          --blue-400: #60A5FA;
-          --blue-600: #2563EB;
-          --blue-800: #1E40AF;
-          --blue-900: #1E3A8A;
-          --green-100: #DCFCE7;
-          --green-200: #BBF7D0;
-          --green-400: #4ADE80;
-          --green-600: #22C55E;
-          --green-800: #15803D;
-          --green-900: #166534;
-          --red-100: #FEE2E2;
-          --red-200: #FECACA;
-          --red-800: #991B1B;
-          --red-900: #7F1D1D;
-          --gray-100: #F3F4F6;
-          --gray-200: #E5E7EB;
-          --gray-800: #1F2A44;
-        }
-        .dark {
-          --background: #0F172A;
-          --foreground: #F1F5F9;
-          --card: #1E293B;
-          --muted-foreground: #94A3B8;
-          --primary: #3B82F6;
-          --border: #334155;
-          --muted: #1E293B;
-          --destructive: #DC2626;
-          --destructive-foreground: #F1F5F9;
-          --yellow-100: #FEF9C3;
-          --yellow-200: #FEF08A;
-          --yellow-600: #EAB308;
-          --yellow-800: #CA8A04;
-          --yellow-900: #A16207;
-          --blue-100: #DBEAFE;
-          --blue-200: #BFDBFE;
-          --blue-400: #60A5FA;
-          --blue-600: #2563EB;
-          --blue-800: #1E40AF;
-          --blue-900: #1E3A8A;
-          --green-100: #DCFCE7;
-          --green-200: #BBF7D0;
-          --green-400: #4ADE80;
-          --green-600: #22C55E;
-          --green-800: #15803D;
-          --green-900: #166534;
-          --red-100: #FEE2E2;
-          --red-200: #FECACA;
-          --red-800: #991B1B;
-          --red-900: #7F1D1D;
-          --gray-100: #1F2A44;
-          --gray-200: #2D3748;
-          --gray-800: #D1D5DB;
-        }
-        html { scroll-behavior: smooth; }
-        body {
-          background-color: var(--background);
-          color: var(--foreground);
-          transition: background-color 0.3s ease, color 0.3s ease;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-        }
-        .bg-background { background-color: var(--background); }
-        .bg-card { background-color: var(--card); }
-        .bg-muted { background-color: var(--muted); }
-        .text-foreground { color: var(--foreground); }
-        .text-muted-foreground { color: var(--muted-foreground); }
-        .text-primary { color: var(--primary); }
-        .border-border { border-color: var(--border); }
-        .bg-primary { background-color: var(--primary); }
-        .text-destructive { color: var(--destructive); }
-        .bg-destructive { background-color: var(--destructive); }
-        .text-destructive-foreground { color: var(--destructive-foreground); }
-        .bg-yellow-100 { background-color: var(--yellow-100); }
-        .bg-yellow-200 { background-color: var(--yellow-200); }
-        .text-yellow-600 { color: var(--yellow-600); }
-        .text-yellow-800 { color: var(--yellow-800); }
-        .bg-yellow-900\\/50 { background-color: rgba(161, 98, 7, 0.5); }
-        .text-yellow-200 { color: var(--yellow-200); }
-        .bg-blue-100 { background-color: var(--blue-100); }
-        .text-blue-600 { color: var(--blue-600); }
-        .text-blue-800 { color: var(--blue-800); }
-        .bg-blue-900\\/50 { background-color: rgba(30, 58, 138, 0.5); }
-        .text-blue-200 { color: var(--blue-200); }
-        .text-blue-400 { color: var(--blue-400); }
-        .bg-green-100 { background-color: var(--green-100); }
-        .text-green-600 { color: var(--green-600); }
-        .text-green-800 { color: var(--green-800); }
-        .bg-green-900\\/50 { background-color: rgba(22, 101, 52, 0.5); }
-        .text-green-200 { color: var(--green-200); }
-        .text-green-400 { color: var(--green-400); }
-        .bg-red-100 { background-color: var(--red-100); }
-        .text-red-800 { color: var(--red-800); }
-        .bg-red-900\\/50 { background-color: rgba(127, 29, 29, 0.5); }
-        .text-red-200 { color: var(--red-200); }
-        .bg-gray-100 { background-color: var(--gray-100); }
-        .bg-gray-800 { background-color: var(--gray-800); }
-        .text-gray-800 { color: var(--gray-800); }
-        .text-gray-200 { color: var(--gray-200); }
-        button:focus-visible, input:focus-visible {
-          outline: 2px solid var(--primary);
-          outline-offset: 2px;
-        }
-        .animate-spin {
-          animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        .h-2 { height: 0.5rem; }
-        .h-4 { height: 1rem; }
-        .w-4 { width: 1rem; }
-        .h-5 { height: 1.25rem; }
-        .w-5 { width: 1.25rem; }
-        .h-12 { height: 3rem; }
-        .w-12 { width: 3rem; }
-        .text-sm { font-size: 0.875rem; }
-        .text-lg { font-size: 1.125rem; }
-        .text-2xl { font-size: 1.5rem; }
-        .text-xs { font-size: 0.75rem; }
-        .font-medium { font-weight: 500; }
-        .font-bold { font-weight: 700; }
-        .font-semibold { font-weight: 600; }
-        .space-y-2 > * + * { margin-top: 0.5rem; }
-        .space-y-4 > * + * { margin-top: 1rem; }
-        .space-y-6 > * + * { margin-top: 1.5rem; }
-        .space-x-1 > * + * { margin-left: 0.25rem; }
-        .space-x-2 > * + * { margin-left: 0.5rem; }
-        .space-x-4 > * + * { margin-left: 1rem; }
-        .p-4 { padding: 1rem; }
-        .px-4 { padding-left: 1rem; padding-right: 1rem; }
-        .py-8 { padding-top: 2rem; padding-bottom: 2rem; }
-        .mb-2 { margin-bottom: 0.5rem; }
-        .mb-3 { margin-bottom: 0.75rem; }
-        .mb-4 { margin-bottom: 1rem; }
-        .ml-1 { margin-left: 0.25rem; }
-        .ml-4 { margin-left: 1rem; }
-        .pb-3 { padding-bottom: 0.75rem; }
-        .rounded-lg { border-radius: 0.5rem; }
-        .border { border-width: 1px; }
-        .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
-        .max-w-sm { max-width: 24rem; }
-        .w-full { width: 100%; }
-        .h-32 { height: 8rem; }
-        .grid { display: grid; }
-        .grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
-        .md\\:grid-cols-2 { @media (min-width: 768px) { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-        .md\\:grid-cols-4 { @media (min-width: 768px) { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-        .lg\\:grid-cols-2 { @media (min-width: 1024px) { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-        .gap-4 { gap: 1rem; }
-        .gap-6 { gap: 1.5rem; }
-        .flex { display: flex; }
-        .items-start { align-items: flex-start; }
-        .items-center { align-items: center; }
-        .justify-between { justify-content: space-between; }
-        .justify-center { justify-content: center; }
-        .text-center { text-align: center; }
-        .relative { position: relative; }
-        .absolute { position: absolute; }
-        .top-1\\/2 { top: 50%; }
-        .right-2 { right: 0.5rem; }
-        .transform { transform: translate(0, 0); }
-        .-translate-y-1\\/2 { transform: translateY(-50%); }
-        .transition-all { transition: all 0.3s ease; }
-        .hover\\:bg-muted:hover { background-color: var(--muted); }
-        .hover\\:bg-primary\\/90:hover { background-color: rgba(59, 130, 246, 0.9); }
-      `}</style>
-      <div className="min-h-screen bg-background p-4">
-        <div className="max-w-8xl mx-auto">
-          {loading ? (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {[...Array(4)].map((_, i) => (
-                  <Card key={i} className="bg-card border-border">
-                    <CardHeader className="pb-3">
-                      <Skeleton className="h-4 w-24" />
-                    </CardHeader>
-                    <CardContent>
-                      <Skeleton className="h-8 w-16" />
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-              <div className="space-y-4">
-                {[...Array(3)].map((_, i) => (
-                  <Card key={i} className="bg-card border-border">
-                    <CardHeader>
-                      <Skeleton className="h-6 w-48" />
-                      <Skeleton className="h-4 w-32" />
-                    </CardHeader>
-                    <CardContent>
-                      <Skeleton className="h-16 w-full" />
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          ) : error ? (
-            <Alert variant="destructive" className="bg-destructive text-destructive-foreground">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          ) : (
-            <div className="space-y-6">
-              <Tabs defaultValue="overview" className="space-y-6">
-                <TabsList className="bg-muted">
-                  <TabsTrigger value="overview" className="flex items-center space-x-2 text-foreground data-[state=active]:bg-primary data-[state=active]:text-white">
-                    <Activity className="h-4 w-4" />
-                    <span>{t.overview}</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="analytics" className="flex items-center space-x-2 text-foreground data-[state=active]:bg-primary data-[state=active]:text-white">
-                    <TrendingUp className="h-4 w-4" />
-                    <span>{t.analytics}</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="issues" className="flex items-center space-x-2 text-foreground data-[state=active]:bg-primary data-[state=active]:text-white">
-                    <MapPin className="h-4 w-4" />
-                    <span>{t.recentIssues}</span>
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="overview" className="space-y-6">
-                  {/* Key Metrics */}
-                  {analytics && (
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                      <Card className="bg-card border-border shadow-lg">
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-sm font-medium text-muted-foreground">{t.totalIssues}</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-2xl font-bold text-foreground">{analytics.totalIssues}</div>
-                          <p className="text-xs text-muted-foreground">
-                            {analytics.recentIssues} in last 30 days
-                          </p>
-                        </CardContent>
-                      </Card>
-
-                      <Card className="bg-card border-border shadow-lg">
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-sm font-medium text-muted-foreground">{t.reported}</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
-                            {analytics.statusFlow.reported || 0}
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card className="bg-card border-border shadow-lg">
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-sm font-medium text-muted-foreground">{t.inProgress}</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                            {analytics.statusFlow['in-progress'] || 0}
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card className="bg-card border-border shadow-lg">
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-sm font-medium text-muted-foreground">{t.resolved}</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                            {analytics.statusFlow.resolved || 0}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  )}
-
-                  {/* Performance Metrics */}
-                  {analytics && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <Card className="bg-card border-border shadow-lg">
-                        <CardHeader>
-                          <CardTitle className="text-lg text-foreground">{t.resolutionRate}</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-2">
-                            <div className="flex justify-between">
-                              <span className="text-2xl font-bold text-foreground">{analytics.resolutionRate}%</span>
-                              <span className="text-sm text-muted-foreground">
-                                {analytics.statusFlow.resolved || 0} of {analytics.totalIssues} resolved
-                              </span>
-                            </div>
-                            <Progress value={analytics.resolutionRate} className="h-2" />
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card className="bg-card border-border shadow-lg">
-                        <CardHeader>
-                          <CardTitle className="text-lg text-foreground">{t.avgResolutionTime}</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-2xl font-bold text-foreground">
-                            {analytics.avgResolutionDays} {t.days}
-                          </div>
-                          <p className="text-sm text-muted-foreground">
-                            Average time to resolve issues
-                          </p>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  )}
-
-                  {/* Quick Charts */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <Card className="bg-card border-border shadow-lg">
-                      <CardHeader>
-                        <CardTitle className="text-foreground">{t.issuesByCategory}</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <ResponsiveContainer width="100%" height={200}>
-                          <PieChart>
-                            <Pie
-                              data={categoryData}
-                              cx="50%"
-                              cy="50%"
-                              outerRadius={60}
-                              fill="#8884d8"
-                              dataKey="value"
-                              label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                            >
-                              {categoryData.map((_, index) => (
-                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                              ))}
-                            </Pie>
-                            <Tooltip />
-                          </PieChart>
-                        </ResponsiveContainer>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="bg-card border-border shadow-lg">
-                      <CardHeader>
-                        <CardTitle className="text-foreground">{t.issuesByPriority}</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <ResponsiveContainer width="100%" height={200}>
-                          <BarChart data={priorityData}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" />
-                            <YAxis />
-                            <Tooltip />
-                            <Bar dataKey="value" fill="#8884d8" />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="analytics" className="space-y-6">
-                  {/* Trend Analysis */}
-                  <Card className="bg-card border-border shadow-lg">
-                    <CardHeader>
-                      <CardTitle className="flex items-center space-x-2 text-foreground">
-                        <Calendar className="h-5 w-5" />
-                        <span>Daily Reports Trend (Last 30 Days)</span>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={trendData}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="date" />
-                          <YAxis />
-                          <Tooltip />
-                          <Line type="monotone" dataKey="reports" stroke="#8884d8" strokeWidth={2} />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </CardContent>
-                  </Card>
-
-                  {/* Status Flow */}
-                  <Card className="bg-card border-border shadow-lg">
-                    <CardHeader>
-                      <CardTitle className="text-foreground">Status Distribution</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={statusData} layout="horizontal">
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis type="number" />
-                          <YAxis dataKey="name" type="category" />
-                          <Tooltip />
-                          <Bar dataKey="value" fill="#8884d8" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="issues" className="space-y-6">
-                  {/* Issues List */}
-                  <Card className="bg-card border-border shadow-lg">
-                    <CardHeader>
-                      <CardTitle className="text-foreground">{t.recentIssues}</CardTitle>
-                      <CardDescription className="text-muted-foreground">
-                        All reported issues in your community
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      {issues.length === 0 ? (
-                        <div className="text-center py-8">
-                          <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                          <p className="text-muted-foreground">{t.noIssues}</p>
-                          <p className="text-sm text-muted-foreground mt-2">
-                            {t.noIssuesDesc}
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="space-y-4">
-                          {issues.slice(0, 10).map((issue) => (
-                            <div key={issue.id} className="border border-border rounded-lg p-4 bg-background">
-                              <div className="flex items-start justify-between mb-3">
-                                <div className="flex-1">
-                                  <div className="flex items-center space-x-2 mb-2">
-                                    <h3 className="font-semibold text-foreground">{issue.title}</h3>
-                                    <Badge variant="outline" className={getPriorityColor(issue.priority)}>
-                                      {issue.priority}
-                                    </Badge>
-                                  </div>
-                                  <p className="text-muted-foreground text-sm mb-2">{issue.description}</p>
-                                  <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                                    <div className="flex items-center space-x-1">
-                                      <MapPin className="h-4 w-4" />
-                                      <span>{issue.location}</span>
-                                    </div>
-                                    <div className="flex items-center space-x-1">
-                                      <User className="h-4 w-4" />
-                                      <span>{issue.reporterName}</span>
-                                    </div>
-                                    <div className="flex items-center space-x-1">
-                                      <Clock className="h-4 w-4" />
-                                      <span>{new Date(issue.reportedAt).toLocaleDateString()}</span>
-                                    </div>
-                                  </div>
-                                </div>
-                                <div className="flex items-center space-x-2 ml-4">
-                                  <Badge className={getStatusColor(issue.status)}>
-                                    {getStatusIcon(issue.status)}
-                                    <span className="ml-1 capitalize">{issue.status.replace('-', ' ')}</span>
-                                  </Badge>
-                                </div>
-                              </div>
-                              
-                              {issue.photoUrl && (
-                                <img 
-                                  src={issue.photoUrl} 
-                                  alt="Issue photo" 
-                                  className="w-full max-w-sm h-32 object-cover rounded-lg mb-3 border border-border"
-                                />
-                              )}
-                              
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs text-muted-foreground">
-                                  {t.category}: {issue.category}
-                                </span>
-                                <div className="flex items-center space-x-3">
-                                  {issue.adminNote && (
-                                    <span className="text-xs text-blue-600 dark:text-blue-400">
-                                      {t.adminNote}: {issue.adminNote}
-                                    </span>
-                                  )}
-                                  <Button
-                                    variant={issue.upvotedBy?.includes(session?.user?.id) ? 'default' : 'outline'}
-                                    size="sm"
-                                    className="h-7 px-2"
-                                    onClick={() => handleUpvote(issue.id)}
-                                    disabled={!session?.access_token}
-                                    title={t.upvote}
-                                  >
-                                    <ThumbsUp className="h-3.5 w-3.5 mr-1" />
-                                    {issue.upvotes || 0}
-                                  </Button>
-                                  <IssueComments issueId={issue.id} session={session} language={language} />
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              </Tabs>
-            </div>
-          )}
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader className="pb-3">
+                <Skeleton className="h-4 w-24" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-16" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <div className="space-y-4">
+          {[...Array(3)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-6 w-48" />
+                <Skeleton className="h-4 w-32" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-16 w-full" />
+              </CardContent>
+            </Card>
+          ))}
         </div>
       </div>
-    </>
+    )
+  }
+
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
+    )
+  }
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-3 sm:inline-flex sm:w-auto">
+          <TabsTrigger value="overview" className="gap-1.5">
+            <Activity className="h-4 w-4" />
+            <span>{t.overview}</span>
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="gap-1.5">
+            <TrendingUp className="h-4 w-4" />
+            <span>{t.analytics}</span>
+          </TabsTrigger>
+          <TabsTrigger value="issues" className="gap-1.5">
+            <MapPin className="h-4 w-4" />
+            <span>{t.recentIssues}</span>
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-6 mt-6">
+          {/* Key Metrics */}
+          {analytics && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card className="relative overflow-hidden hover:shadow-glow hover:-translate-y-0.5 transition-all duration-300">
+                <div className="absolute inset-x-0 top-0 h-1 bg-primary" />
+                <CardContent className="p-5 sm:p-6">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">{t.totalIssues}</p>
+                    <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                      <Activity className="h-5 w-5 text-primary" />
+                    </div>
+                  </div>
+                  <div className="text-2xl sm:text-3xl font-display font-bold text-foreground mt-2">{analytics.totalIssues}</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {analytics.recentIssues} in last 30 days
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="relative overflow-hidden hover:shadow-glow hover:-translate-y-0.5 transition-all duration-300">
+                <div className="absolute inset-x-0 top-0 h-1 bg-warning" />
+                <CardContent className="p-5 sm:p-6">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">{t.reported}</p>
+                    <div className="h-9 w-9 rounded-xl bg-warning/15 flex items-center justify-center">
+                      <AlertCircle className="h-5 w-5 text-warning" />
+                    </div>
+                  </div>
+                  <div className="text-2xl sm:text-3xl font-display font-bold text-foreground mt-2">
+                    {analytics.statusFlow.reported || 0}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {analytics.totalIssues ? Math.round(((analytics.statusFlow.reported || 0) / analytics.totalIssues) * 100) : 0}% of total
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="relative overflow-hidden hover:shadow-glow hover:-translate-y-0.5 transition-all duration-300">
+                <div className="absolute inset-x-0 top-0 h-1 bg-info" />
+                <CardContent className="p-5 sm:p-6">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">{t.inProgress}</p>
+                    <div className="h-9 w-9 rounded-xl bg-info/15 flex items-center justify-center">
+                      <Clock className="h-5 w-5 text-info" />
+                    </div>
+                  </div>
+                  <div className="text-2xl sm:text-3xl font-display font-bold text-foreground mt-2">
+                    {analytics.statusFlow['in-progress'] || 0}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {analytics.totalIssues ? Math.round(((analytics.statusFlow['in-progress'] || 0) / analytics.totalIssues) * 100) : 0}% of total
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="relative overflow-hidden hover:shadow-glow hover:-translate-y-0.5 transition-all duration-300">
+                <div className="absolute inset-x-0 top-0 h-1 bg-success" />
+                <CardContent className="p-5 sm:p-6">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">{t.resolved}</p>
+                    <div className="h-9 w-9 rounded-xl bg-success/15 flex items-center justify-center">
+                      <CheckCircle className="h-5 w-5 text-success" />
+                    </div>
+                  </div>
+                  <div className="text-2xl sm:text-3xl font-display font-bold text-foreground mt-2">
+                    {analytics.statusFlow.resolved || 0}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {analytics.resolutionRate}% resolution rate
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Performance Metrics */}
+          {analytics && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">{t.resolutionRate}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-2xl font-display font-bold text-foreground">{analytics.resolutionRate}%</span>
+                    <span className="text-sm text-muted-foreground text-right">
+                      {analytics.statusFlow.resolved || 0} of {analytics.totalIssues} resolved
+                    </span>
+                  </div>
+                  <Progress value={analytics.resolutionRate} />
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">{t.avgResolutionTime}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-display font-bold text-foreground">
+                    {analytics.avgResolutionDays} {t.days}
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Average time to resolve issues
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Quick Charts */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>{t.issuesByCategory}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={240}>
+                  <PieChart>
+                    <Pie
+                      data={categoryData}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={75}
+                      fill="#8884d8"
+                      dataKey="value"
+                      label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                    >
+                      {categoryData.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip contentStyle={tooltipStyle} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>{t.issuesByPriority}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={240}>
+                  <BarChart data={priorityData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={AXIS_COLOR} strokeOpacity={0.15} />
+                    <XAxis dataKey="name" tick={{ fill: AXIS_COLOR, fontSize: 12 }} />
+                    <YAxis tick={{ fill: AXIS_COLOR, fontSize: 12 }} />
+                    <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'hsl(var(--muted))' }} />
+                    <Bar dataKey="value" fill="#6366F1" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="analytics" className="space-y-6 mt-6">
+          {/* Trend Analysis */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-primary" />
+                <span>Daily Reports Trend (Last 30 Days)</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={280}>
+                <LineChart data={trendData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={AXIS_COLOR} strokeOpacity={0.15} />
+                  <XAxis dataKey="date" tick={{ fill: AXIS_COLOR, fontSize: 12 }} />
+                  <YAxis tick={{ fill: AXIS_COLOR, fontSize: 12 }} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Line type="monotone" dataKey="reports" stroke="#6366F1" strokeWidth={2.5} dot={{ fill: '#6366F1', r: 3 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Status Flow */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Status Distribution</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={statusData} layout="horizontal">
+                  <CartesianGrid strokeDasharray="3 3" stroke={AXIS_COLOR} strokeOpacity={0.15} />
+                  <XAxis type="number" tick={{ fill: AXIS_COLOR, fontSize: 12 }} />
+                  <YAxis dataKey="name" type="category" tick={{ fill: AXIS_COLOR, fontSize: 12 }} />
+                  <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'hsl(var(--muted))' }} />
+                  <Bar dataKey="value" fill="#8B5CF6" radius={[0, 6, 6, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="issues" className="space-y-6 mt-6">
+          {/* Issues List */}
+          <Card>
+            <CardHeader>
+              <CardTitle>{t.recentIssues}</CardTitle>
+              <CardDescription>
+                All reported issues in your community
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {issues.length === 0 ? (
+                <EmptyState icon={MapPin} title={t.noIssues} description={t.noIssuesDesc} />
+              ) : (
+                <div className="space-y-4">
+                  {issues.slice(0, 10).map((issue) => (
+                    <EntityCard
+                      key={issue.id}
+                      title={issue.title}
+                      subtitle={issue.description}
+                      badges={[
+                        <StatusBadge key="priority" kind="priority" value={issue.priority} label={issue.priority} />,
+                        <StatusBadge key="status" kind="status" value={issue.status} label={issue.status.replace('-', ' ')} />,
+                      ]}
+                      metadata={[
+                        { icon: MapPin, label: issue.location },
+                        { icon: User, label: issue.reporterName },
+                        { icon: Clock, label: new Date(issue.reportedAt).toLocaleDateString() },
+                      ]}
+                      photoUrl={issue.photoUrl}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2 mt-1">
+                        <span className="text-xs text-muted-foreground">
+                          {t.category}: {issue.category}
+                        </span>
+                        <div className="flex items-center gap-3">
+                          {issue.adminNote && (
+                            <span className="text-xs text-info">
+                              {t.adminNote}: {issue.adminNote}
+                            </span>
+                          )}
+                          <Button
+                            variant={issue.upvotedBy?.includes(session?.user?.id) ? 'default' : 'outline'}
+                            size="sm"
+                            className="h-7 gap-1 px-2"
+                            onClick={() => handleUpvote(issue.id)}
+                            disabled={!session?.access_token}
+                            title={t.upvote}
+                          >
+                            <ThumbsUp className="h-3.5 w-3.5" />
+                            {issue.upvotes || 0}
+                          </Button>
+                          <Comments entityType="issue" entityId={issue.id} session={session} language={language} />
+                        </div>
+                      </div>
+                    </EntityCard>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
   )
 }

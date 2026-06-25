@@ -12,9 +12,10 @@ import {
 import { MessageSquare, Send, Trash2 } from 'lucide-react'
 import { projectId, publicAnonKey } from "../utils/supabase/info"
 
+export type CommentEntityType = 'issue' | 'idea'
+
 interface Comment {
   id: string
-  issueId: string
   userId: string
   userName: string
   text: string
@@ -23,9 +24,9 @@ interface Comment {
 
 const translations = {
   en: {
-    comments: 'Comments',
+    issue: { trigger: 'Comments', desc: 'Share context, discuss solutions, or show your support.' },
+    idea: { trigger: 'Discuss', desc: 'Share feedback, refine the idea, or show your support.' },
     commentsTitle: 'Discussion',
-    commentsDesc: 'Share context, discuss solutions, or show your support.',
     placeholder: 'Add a comment...',
     post: 'Post',
     posting: 'Posting...',
@@ -35,9 +36,9 @@ const translations = {
     delete: 'Delete comment',
   },
   fr: {
-    comments: 'Commentaires',
+    issue: { trigger: 'Commentaires', desc: 'Partagez du contexte, discutez de solutions ou montrez votre soutien.' },
+    idea: { trigger: 'Discuter', desc: 'Partagez vos commentaires, affinez l\'idée ou montrez votre soutien.' },
     commentsTitle: 'Discussion',
-    commentsDesc: 'Partagez du contexte, discutez de solutions ou montrez votre soutien.',
     placeholder: 'Ajouter un commentaire...',
     post: 'Publier',
     posting: 'Publication...',
@@ -48,13 +49,19 @@ const translations = {
   },
 }
 
-export function IssueComments({
-  issueId,
+// Unified comment thread for both issues and ideas - the two entity types
+// share the exact same comments API shape (just a different path segment),
+// so this single component replaces what used to be two ~215-line files
+// (IssueComments.tsx / IdeaComments.tsx) differing only in entityType.
+export function Comments({
+  entityType,
+  entityId,
   session,
   language = 'en',
   tempRole,
 }: {
-  issueId: string
+  entityType: CommentEntityType
+  entityId: string
   session: any
   language?: 'en' | 'fr'
   tempRole?: string | null
@@ -67,16 +74,15 @@ export function IssueComments({
   const [deletingId, setDeletingId] = useState('')
 
   const t = translations[language]
+  const entityCopy = t[entityType]
   const currentUserRole = tempRole || session?.user?.user_metadata?.role
   const isModerator = currentUserRole === 'admin'
+  const commentsUrl = `https://${projectId}.supabase.co/functions/v1/make-server-accecacf/${entityType}s/${entityId}/comments`
 
   const fetchComments = async () => {
     try {
       setLoading(true)
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-accecacf/issues/${issueId}/comments`,
-        { headers: { Authorization: `Bearer ${publicAnonKey}` } }
-      )
+      const response = await fetch(commentsUrl, { headers: { Authorization: `Bearer ${publicAnonKey}` } })
       if (!response.ok) return
       const data = await response.json()
       setComments(data.comments || [])
@@ -97,17 +103,14 @@ export function IssueComments({
 
     try {
       setPosting(true)
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-accecacf/issues/${issueId}/comments`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ text }),
-        }
-      )
+      const response = await fetch(commentsUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ text }),
+      })
       if (!response.ok) return
       const data = await response.json()
       setComments(prev => [...prev, data.comment])
@@ -129,10 +132,7 @@ export function IssueComments({
       }
       if (tempRole) headers['X-Temp-Role'] = tempRole
 
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-accecacf/issues/${issueId}/comments/${commentId}`,
-        { method: 'DELETE', headers }
-      )
+      const response = await fetch(`${commentsUrl}/${commentId}`, { method: 'DELETE', headers })
       if (!response.ok) return
       setComments(prev => prev.filter(comment => comment.id !== commentId))
     } catch (err) {
@@ -146,14 +146,14 @@ export function IssueComments({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="h-7 px-2">
-          <MessageSquare className="h-3.5 w-3.5 mr-1" />
-          {t.comments}
+          <MessageSquare className="h-3.5 w-3.5" />
+          {entityCopy.trigger}
         </Button>
       </DialogTrigger>
-      <DialogContent className="bg-card border-border max-h-[80vh] flex flex-col">
+      <DialogContent className="max-h-[80vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="text-foreground">{t.commentsTitle}</DialogTitle>
-          <DialogDescription className="text-muted-foreground">{t.commentsDesc}</DialogDescription>
+          <DialogTitle>{t.commentsTitle}</DialogTitle>
+          <DialogDescription>{entityCopy.desc}</DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto space-y-3 py-2">
@@ -163,10 +163,10 @@ export function IssueComments({
             <p className="text-sm text-muted-foreground">{t.noComments}</p>
           ) : (
             comments.map((comment) => (
-              <div key={comment.id} className="border border-border rounded-lg p-3 bg-background">
-                <div className="flex items-center justify-between mb-1">
+              <div key={comment.id} className="rounded-xl border border-border/50 bg-muted/30 p-3">
+                <div className="flex items-center justify-between mb-1 gap-2">
                   <span className="text-sm font-medium text-foreground">{comment.userName}</span>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center gap-2">
                     <span className="text-xs text-muted-foreground">
                       {new Date(comment.createdAt).toLocaleString()}
                     </span>
@@ -174,7 +174,7 @@ export function IssueComments({
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-muted"
+                        className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
                         onClick={() => handleDelete(comment.id)}
                         disabled={deletingId === comment.id}
                         title={t.delete}
@@ -197,11 +197,10 @@ export function IssueComments({
               onChange={(e) => setText(e.target.value)}
               placeholder={t.placeholder}
               rows={2}
-              className="bg-background border-border text-foreground"
             />
             <div className="flex justify-end">
               <Button onClick={handlePost} disabled={posting || !text.trim()} size="sm">
-                <Send className="h-4 w-4 mr-2" />
+                <Send className="h-4 w-4" />
                 {posting ? t.posting : t.post}
               </Button>
             </div>

@@ -1,8 +1,9 @@
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import { Toast, ToastProps, ToastType } from './Toast.tsx';
+import { AnimatePresence } from 'framer-motion';
+import { Toast, ToastProps, ToastType, ToastAction } from './Toast.tsx';
 
 interface ToastContextType {
-  addToast: (message: string, type: ToastType) => void;
+  addToast: (message: string, type: ToastType, action?: ToastAction) => void;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -18,9 +19,9 @@ export function useToast() {
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Omit<ToastProps, 'onDismiss'>[]>([]);
 
-  const addToast = useCallback((message: string, type: ToastType) => {
+  const addToast = useCallback((message: string, type: ToastType, action?: ToastAction) => {
     const id = crypto.randomUUID();
-    setToasts((prevToasts) => [...prevToasts, { id, message, type }]);
+    setToasts((prevToasts) => [...prevToasts, { id, message, type, action }]);
   }, []);
 
   const removeToast = useCallback((id: string) => {
@@ -31,15 +32,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={{ addToast }}>
       {children}
       <div className="fixed top-4 right-4 z-[100] w-full max-w-sm space-y-2">
-        {toasts.map((toast) => (
-          <Toast
-            key={toast.id}
-            id={toast.id}
-            message={toast.message}
-            type={toast.type}
-            onDismiss={removeToast}
-          />
-        ))}
+        <AnimatePresence>
+          {toasts.map((toast) => (
+            <Toast
+              key={toast.id}
+              id={toast.id}
+              message={toast.message}
+              type={toast.type}
+              action={toast.action}
+              onDismiss={removeToast}
+            />
+          ))}
+        </AnimatePresence>
       </div>
     </ToastContext.Provider>
   );

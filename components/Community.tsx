@@ -19,8 +19,8 @@ import { Label } from "./ui/label"
 import { Textarea } from "./ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
 import { useToast } from "./ToastContext"
-import { IssueComments } from "./IssueComments"
-import { IdeaComments } from "./IdeaComments"
+import { Comments } from "./Comments"
+import { StatusBadge } from "./ui/status-badge"
 import {
   Heart, CalendarDays, MapPin, Users, Plus, RefreshCw, AlertCircle,
   CheckCircle, XCircle, Loader2, Trash2, HandHeart, Newspaper, ThumbsUp, Clock,
@@ -360,80 +360,25 @@ const translations = {
   },
 }
 
-const getStatusColor = (status: string) => {
+const getIdeaStatusVariant = (status: string): 'info' | 'warning' | 'secondary' | 'default' | 'success' | 'destructive' => {
   switch (status) {
     case 'open':
-    case 'upcoming':
-      return 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200'
-    case 'completed':
-      return 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200'
-    case 'cancelled':
-      return 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200'
-    default:
-      return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
-  }
-}
-
-const getIdeaStatusColor = (status: string) => {
-  switch (status) {
-    case 'open':
-      return 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200'
+      return 'info'
     case 'under_review':
-      return 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200'
+      return 'warning'
     case 'planned':
+      return 'secondary'
     case 'in_progress':
-      return 'bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-200'
+      return 'default'
     case 'completed':
-      return 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200'
+      return 'success'
     case 'rejected':
-      return 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200'
+      return 'destructive'
     default:
-      return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
+      return 'secondary'
   }
 }
 
-const getIssueStatusColor = (status: string) => {
-  switch (status) {
-    case 'reported':
-      return 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200'
-    case 'in-progress':
-    case 'assigned':
-      return 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200'
-    case 'resolved':
-      return 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200'
-    case 'rejected':
-      return 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200'
-    default:
-      return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
-  }
-}
-
-const getIssueStatusIcon = (status: string) => {
-  switch (status) {
-    case 'resolved':
-      return <CheckCircle className="h-3.5 w-3.5" />
-    case 'rejected':
-      return <XCircle className="h-3.5 w-3.5" />
-    case 'in-progress':
-    case 'assigned':
-      return <Clock className="h-3.5 w-3.5" />
-    default:
-      return <AlertCircle className="h-3.5 w-3.5" />
-  }
-}
-
-const getPriorityColor = (priority: string) => {
-  switch (priority) {
-    case 'high':
-      return 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200'
-    case 'medium':
-      return 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200'
-    case 'low':
-      return 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200'
-    default:
-      return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
-  }
-}
 
 const getBadgeDisplay = (badge: string, t: Record<string, string>) => {
   switch (badge) {
@@ -825,76 +770,73 @@ export function Community({ session, language = 'en', userRole, tempRole }: {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background p-4">
-        <div className="max-w-4xl mx-auto space-y-4">
-          {[...Array(3)].map((_, i) => (
-            <Card key={i} className="bg-card border-border">
-              <CardHeader>
-                <Skeleton className="h-6 w-48" />
-                <Skeleton className="h-4 w-32" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-16 w-full" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+      <div className="space-y-4 animate-fade-in">
+        {[...Array(3)].map((_, i) => (
+          <Card key={i}>
+            <CardHeader>
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-32" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-16 w-full" />
+            </CardContent>
+          </Card>
+        ))}
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-background p-4">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <Heart className="h-6 w-6 text-red-500" />
-            {t.title}
-          </h1>
-          <p className="text-muted-foreground">{t.subtitle}</p>
-        </div>
+    <div className="space-y-6 animate-fade-in">
+      <div>
+        <h1 className="font-display text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
+          <Heart className="h-6 w-6 text-destructive" />
+          {t.title}
+        </h1>
+        <p className="text-muted-foreground">{t.subtitle}</p>
+      </div>
 
-        {error && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              {error}
-              <Button variant="outline" size="sm" className="ml-2" onClick={fetchData}>
-                <RefreshCw className="h-4 w-4 mr-1" />
-                {t.refresh}
-              </Button>
-            </AlertDescription>
-          </Alert>
-        )}
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <span>{error}</span>
+            <Button variant="outline" size="sm" onClick={fetchData}>
+              <RefreshCw className="h-4 w-4" />
+              {t.refresh}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
-        <Tabs defaultValue="feed" className="space-y-4">
-          <TabsList className="bg-card border-border">
-            <TabsTrigger value="feed" className="flex items-center gap-2 text-foreground hover:bg-muted">
-              <Newspaper className="h-4 w-4" />
-              <span>{t.feedTab}</span>
-            </TabsTrigger>
-            <TabsTrigger value="tasks" className="flex items-center gap-2 text-foreground hover:bg-muted">
-              <HandHeart className="h-4 w-4" />
-              <span>{t.volunteerTasksTab}</span>
-            </TabsTrigger>
-            <TabsTrigger value="events" className="flex items-center gap-2 text-foreground hover:bg-muted">
-              <CalendarDays className="h-4 w-4" />
-              <span>{t.eventsTab}</span>
-            </TabsTrigger>
-            <TabsTrigger value="ideas" className="flex items-center gap-2 text-foreground hover:bg-muted">
-              <Lightbulb className="h-4 w-4" />
-              <span>{t.ideasTab}</span>
-            </TabsTrigger>
-            <TabsTrigger value="leaderboard" className="flex items-center gap-2 text-foreground hover:bg-muted">
-              <Trophy className="h-4 w-4" />
-              <span>{t.leaderboardTab}</span>
-            </TabsTrigger>
-          </TabsList>
+      <Tabs defaultValue="feed" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-5 sm:inline-flex sm:w-auto">
+          <TabsTrigger value="feed" className="gap-1.5">
+            <Newspaper className="h-4 w-4" />
+            <span className="hidden sm:inline">{t.feedTab}</span>
+          </TabsTrigger>
+          <TabsTrigger value="tasks" className="gap-1.5">
+            <HandHeart className="h-4 w-4" />
+            <span className="hidden sm:inline">{t.volunteerTasksTab}</span>
+          </TabsTrigger>
+          <TabsTrigger value="events" className="gap-1.5">
+            <CalendarDays className="h-4 w-4" />
+            <span className="hidden sm:inline">{t.eventsTab}</span>
+          </TabsTrigger>
+          <TabsTrigger value="ideas" className="gap-1.5">
+            <Lightbulb className="h-4 w-4" />
+            <span className="hidden sm:inline">{t.ideasTab}</span>
+          </TabsTrigger>
+          <TabsTrigger value="leaderboard" className="gap-1.5">
+            <Trophy className="h-4 w-4" />
+            <span className="hidden sm:inline">{t.leaderboardTab}</span>
+          </TabsTrigger>
+        </TabsList>
 
           {/* Issue Feed */}
           <TabsContent value="feed" className="space-y-4">
             {issues.length === 0 ? (
-              <Card className="bg-card border-border">
+              <Card>
                 <CardContent className="py-8 text-center text-muted-foreground">
                   <Newspaper className="h-10 w-10 mx-auto mb-3 opacity-50" />
                   <p>{t.noFeedIssues}</p>
@@ -905,9 +847,9 @@ export function Community({ session, language = 'en', userRole, tempRole }: {
               issues.map((issue) => {
                 const hasLiked = !!currentUserId && (issue.upvotedBy || []).includes(currentUserId)
                 return (
-                  <Card key={issue.id} className="bg-card border-border">
+                  <Card key={issue.id}>
                     <CardHeader>
-                      <div className="flex items-start justify-between gap-2">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <div className="h-8 w-8 rounded-full bg-primary text-white flex items-center justify-center text-sm font-semibold">
@@ -922,13 +864,10 @@ export function Community({ session, language = 'en', userRole, tempRole }: {
                               </div>
                             </div>
                           </div>
-                          <CardTitle className="text-foreground">{issue.title}</CardTitle>
-                          <CardDescription className="text-muted-foreground">{issue.description}</CardDescription>
+                          <CardTitle>{issue.title}</CardTitle>
+                          <CardDescription>{issue.description}</CardDescription>
                         </div>
-                        <Badge className={getIssueStatusColor(issue.status)}>
-                          {getIssueStatusIcon(issue.status)}
-                          <span className="ml-1">{t.issueStatuses[issue.status] || issue.status}</span>
-                        </Badge>
+                        <StatusBadge kind="status" value={issue.status} label={t.issueStatuses[issue.status] || issue.status} />
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-3">
@@ -936,22 +875,20 @@ export function Community({ session, language = 'en', userRole, tempRole }: {
                         <img
                           src={issue.photoUrl}
                           alt={issue.title}
-                          className="w-full max-h-96 object-cover rounded-lg border border-border"
+                          className="w-full max-h-96 object-cover rounded-xl border border-border"
                         />
                       )}
 
                       <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                        <Badge variant="outline" className="text-foreground border-border">{issue.category}</Badge>
-                        <Badge variant="outline" className={getPriorityColor(issue.priority)}>
-                          {t.priorities[issue.priority] || issue.priority}
-                        </Badge>
+                        <Badge variant="outline">{issue.category}</Badge>
+                        <StatusBadge kind="priority" value={issue.priority} label={t.priorities[issue.priority] || issue.priority} />
                         <span className="flex items-center gap-1">
                           <MapPin className="h-3.5 w-3.5" />
                           {issue.location}
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-2 pt-2 border-t border-border">
+                      <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border">
                         <Button
                           size="sm"
                           variant={hasLiked ? 'default' : 'outline'}
@@ -959,13 +896,13 @@ export function Community({ session, language = 'en', userRole, tempRole }: {
                           disabled={actionId === issue.id}
                         >
                           {actionId === issue.id ? (
-                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                            <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
-                            <ThumbsUp className="h-4 w-4 mr-1" />
+                            <ThumbsUp className="h-4 w-4" />
                           )}
                           {hasLiked ? t.liked : t.like} ({issue.upvotes || 0})
                         </Button>
-                        <IssueComments issueId={issue.id} session={session} language={language} tempRole={tempRole} />
+                        <Comments entityType="issue" entityId={issue.id} session={session} language={language} tempRole={tempRole} />
                       </div>
                     </CardContent>
                   </Card>
@@ -981,29 +918,28 @@ export function Community({ session, language = 'en', userRole, tempRole }: {
                 <Dialog open={taskDialogOpen} onOpenChange={setTaskDialogOpen}>
                   <DialogTrigger asChild>
                     <Button size="sm">
-                      <Plus className="h-4 w-4 mr-2" />
+                      <Plus className="h-4 w-4" />
                       {t.createTask}
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="bg-card border-border">
+                  <DialogContent>
                     <DialogHeader>
-                      <DialogTitle className="text-foreground">{t.newTaskTitle}</DialogTitle>
-                      <DialogDescription className="text-muted-foreground">{t.newTaskDesc}</DialogDescription>
+                      <DialogTitle>{t.newTaskTitle}</DialogTitle>
+                      <DialogDescription>{t.newTaskDesc}</DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleCreateTask} className="space-y-4">
                       <div className="space-y-2">
-                        <Label htmlFor="task-title" className="text-foreground">{t.titleLabel} *</Label>
+                        <Label htmlFor="task-title">{t.titleLabel} *</Label>
                         <Input
                           id="task-title"
                           required
                           placeholder={t.taskTitlePlaceholder}
                           value={taskForm.title}
                           onChange={(e) => setTaskForm(prev => ({ ...prev, title: e.target.value }))}
-                          className="bg-background border-border text-foreground"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="task-description" className="text-foreground">{t.descriptionLabel} *</Label>
+                        <Label htmlFor="task-description">{t.descriptionLabel} *</Label>
                         <Textarea
                           id="task-description"
                           required
@@ -1011,17 +947,16 @@ export function Community({ session, language = 'en', userRole, tempRole }: {
                           placeholder={t.descriptionPlaceholder}
                           value={taskForm.description}
                           onChange={(e) => setTaskForm(prev => ({ ...prev, description: e.target.value }))}
-                          className="bg-background border-border text-foreground"
                         />
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label className="text-foreground">{t.category}</Label>
+                          <Label>{t.category}</Label>
                           <Select value={taskForm.category} onValueChange={(value) => setTaskForm(prev => ({ ...prev, category: value }))}>
-                            <SelectTrigger className="bg-background border-border text-foreground">
+                            <SelectTrigger>
                               <SelectValue placeholder={t.category} />
                             </SelectTrigger>
-                            <SelectContent className="bg-card shadow-lg z-50 rounded-lg">
+                            <SelectContent>
                               {VOLUNTEER_CATEGORIES.map((cat) => (
                                 <SelectItem key={cat.en} value={cat.en}>
                                   {language === 'fr' ? cat.fr : cat.en}
@@ -1031,31 +966,29 @@ export function Community({ session, language = 'en', userRole, tempRole }: {
                           </Select>
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="task-max-volunteers" className="text-foreground">{t.maxVolunteersLabel}</Label>
+                          <Label htmlFor="task-max-volunteers">{t.maxVolunteersLabel}</Label>
                           <Input
                             id="task-max-volunteers"
                             type="number"
                             min={1}
                             value={taskForm.maxVolunteers}
                             onChange={(e) => setTaskForm(prev => ({ ...prev, maxVolunteers: e.target.value }))}
-                            className="bg-background border-border text-foreground"
                           />
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="task-location" className="text-foreground">{t.location} *</Label>
+                        <Label htmlFor="task-location">{t.location} *</Label>
                         <Input
                           id="task-location"
                           required
                           placeholder={t.locationPlaceholder}
                           value={taskForm.location}
                           onChange={(e) => setTaskForm(prev => ({ ...prev, location: e.target.value }))}
-                          className="bg-background border-border text-foreground"
                         />
                       </div>
                       <DialogFooter>
                         <Button type="submit" disabled={submitting}>
-                          {submitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                          {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                           {submitting ? t.submitting : t.submit}
                         </Button>
                       </DialogFooter>
@@ -1066,7 +999,7 @@ export function Community({ session, language = 'en', userRole, tempRole }: {
             )}
 
             {tasks.length === 0 ? (
-              <Card className="bg-card border-border">
+              <Card>
                 <CardContent className="py-8 text-center text-muted-foreground">
                   <HandHeart className="h-10 w-10 mx-auto mb-3 opacity-50" />
                   <p>{t.noTasks}</p>
@@ -1078,17 +1011,17 @@ export function Community({ session, language = 'en', userRole, tempRole }: {
                 const hasJoined = !!currentUserId && task.volunteers.some(v => v.userId === currentUserId)
                 const isFull = !!task.maxVolunteers && task.volunteers.length >= task.maxVolunteers
                 return (
-                  <Card key={task.id} className="bg-card border-border">
+                  <Card key={task.id}>
                     <CardHeader>
-                      <div className="flex items-start justify-between gap-2">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
                         <div className="space-y-1">
-                          <CardTitle className="text-foreground">{task.title}</CardTitle>
-                          <CardDescription className="text-muted-foreground">{task.description}</CardDescription>
+                          <CardTitle>{task.title}</CardTitle>
+                          <CardDescription>{task.description}</CardDescription>
                         </div>
-                        <div className="flex flex-col items-end gap-1">
-                          <Badge className={getStatusColor(task.status)}>{t.statuses[task.status] || task.status}</Badge>
-                          <Badge variant="outline" className="text-foreground border-border whitespace-nowrap">
-                            <Award className="h-3 w-3 mr-1 text-yellow-500" />
+                        <div className="flex sm:flex-col items-start sm:items-end gap-1">
+                          <StatusBadge kind="taskEvent" value={task.status} label={t.statuses[task.status] || task.status} />
+                          <Badge variant="outline" className="whitespace-nowrap">
+                            <Award className="h-3 w-3 text-warning" />
                             {t.earnPoints} {TASK_COMPLETION_POINTS} {t.points}
                           </Badge>
                         </div>
@@ -1096,7 +1029,7 @@ export function Community({ session, language = 'en', userRole, tempRole }: {
                     </CardHeader>
                     <CardContent className="space-y-3">
                       <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                        <Badge variant="outline" className="text-foreground border-border">{task.category}</Badge>
+                        <Badge variant="outline">{task.category}</Badge>
                         <span className="flex items-center gap-1">
                           <MapPin className="h-3.5 w-3.5" />
                           {task.location}
@@ -1111,23 +1044,23 @@ export function Community({ session, language = 'en', userRole, tempRole }: {
                       {task.volunteers.length > 0 && (
                         <div className="flex flex-wrap gap-1">
                           {task.volunteers.map(v => (
-                            <Badge key={v.userId} variant="secondary" className="bg-muted text-muted-foreground text-xs">
+                            <Badge key={v.userId} variant="secondary" className="text-xs">
                               {v.userName}
                             </Badge>
                           ))}
                         </div>
                       )}
 
-                      <div className="flex items-center gap-2 pt-2 border-t border-border">
+                      <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border">
                         {!isStaff && task.status === 'open' && (
                           hasJoined ? (
                             <Button size="sm" variant="outline" onClick={() => handleLeaveTask(task.id)} disabled={actionId === task.id}>
-                              {actionId === task.id ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <XCircle className="h-4 w-4 mr-1" />}
+                              {actionId === task.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
                               {t.leave}
                             </Button>
                           ) : (
                             <Button size="sm" onClick={() => handleJoinTask(task.id)} disabled={actionId === task.id || isFull}>
-                              {actionId === task.id ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <HandHeart className="h-4 w-4 mr-1" />}
+                              {actionId === task.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <HandHeart className="h-4 w-4" />}
                               {isFull ? t.full : t.join}
                             </Button>
                           )
@@ -1136,11 +1069,11 @@ export function Community({ session, language = 'en', userRole, tempRole }: {
                         {isStaff && task.status === 'open' && (
                           <>
                             <Button size="sm" variant="outline" onClick={() => handleTaskStatus(task.id, 'completed')} disabled={actionId === task.id}>
-                              <CheckCircle className="h-4 w-4 mr-1" />
+                              <CheckCircle className="h-4 w-4" />
                               {t.markCompleted}
                             </Button>
                             <Button size="sm" variant="outline" onClick={() => handleTaskStatus(task.id, 'cancelled')} disabled={actionId === task.id}>
-                              <XCircle className="h-4 w-4 mr-1" />
+                              <XCircle className="h-4 w-4" />
                               {t.cancelAction}
                             </Button>
                           </>
@@ -1150,7 +1083,7 @@ export function Community({ session, language = 'en', userRole, tempRole }: {
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="text-destructive hover:text-destructive hover:bg-muted ml-auto"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10 ml-auto"
                             onClick={() => handleDeleteTask(task.id)}
                             disabled={actionId === task.id}
                             title={t.delete}
@@ -1173,29 +1106,28 @@ export function Community({ session, language = 'en', userRole, tempRole }: {
                 <Dialog open={eventDialogOpen} onOpenChange={setEventDialogOpen}>
                   <DialogTrigger asChild>
                     <Button size="sm">
-                      <Plus className="h-4 w-4 mr-2" />
+                      <Plus className="h-4 w-4" />
                       {t.createEvent}
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="bg-card border-border">
+                  <DialogContent>
                     <DialogHeader>
-                      <DialogTitle className="text-foreground">{t.newEventTitle}</DialogTitle>
-                      <DialogDescription className="text-muted-foreground">{t.newEventDesc}</DialogDescription>
+                      <DialogTitle>{t.newEventTitle}</DialogTitle>
+                      <DialogDescription>{t.newEventDesc}</DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleCreateEvent} className="space-y-4">
                       <div className="space-y-2">
-                        <Label htmlFor="event-title" className="text-foreground">{t.titleLabel} *</Label>
+                        <Label htmlFor="event-title">{t.titleLabel} *</Label>
                         <Input
                           id="event-title"
                           required
                           placeholder={t.eventTitlePlaceholder}
                           value={eventForm.title}
                           onChange={(e) => setEventForm(prev => ({ ...prev, title: e.target.value }))}
-                          className="bg-background border-border text-foreground"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="event-description" className="text-foreground">{t.descriptionLabel} *</Label>
+                        <Label htmlFor="event-description">{t.descriptionLabel} *</Label>
                         <Textarea
                           id="event-description"
                           required
@@ -1203,17 +1135,16 @@ export function Community({ session, language = 'en', userRole, tempRole }: {
                           placeholder={t.descriptionPlaceholder}
                           value={eventForm.description}
                           onChange={(e) => setEventForm(prev => ({ ...prev, description: e.target.value }))}
-                          className="bg-background border-border text-foreground"
                         />
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label className="text-foreground">{t.category}</Label>
+                          <Label>{t.category}</Label>
                           <Select value={eventForm.category} onValueChange={(value) => setEventForm(prev => ({ ...prev, category: value }))}>
-                            <SelectTrigger className="bg-background border-border text-foreground">
+                            <SelectTrigger>
                               <SelectValue placeholder={t.category} />
                             </SelectTrigger>
-                            <SelectContent className="bg-card shadow-lg z-50 rounded-lg">
+                            <SelectContent>
                               {EVENT_CATEGORIES.map((cat) => (
                                 <SelectItem key={cat.en} value={cat.en}>
                                   {language === 'fr' ? cat.fr : cat.en}
@@ -1223,44 +1154,41 @@ export function Community({ session, language = 'en', userRole, tempRole }: {
                           </Select>
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="event-max-attendees" className="text-foreground">{t.maxAttendeesLabel}</Label>
+                          <Label htmlFor="event-max-attendees">{t.maxAttendeesLabel}</Label>
                           <Input
                             id="event-max-attendees"
                             type="number"
                             min={1}
                             value={eventForm.maxAttendees}
                             onChange={(e) => setEventForm(prev => ({ ...prev, maxAttendees: e.target.value }))}
-                            className="bg-background border-border text-foreground"
                           />
                         </div>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="event-location" className="text-foreground">{t.location} *</Label>
+                          <Label htmlFor="event-location">{t.location} *</Label>
                           <Input
                             id="event-location"
                             required
                             placeholder={t.locationPlaceholder}
                             value={eventForm.location}
                             onChange={(e) => setEventForm(prev => ({ ...prev, location: e.target.value }))}
-                            className="bg-background border-border text-foreground"
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="event-date" className="text-foreground">{t.eventDateLabel} *</Label>
+                          <Label htmlFor="event-date">{t.eventDateLabel} *</Label>
                           <Input
                             id="event-date"
                             type="datetime-local"
                             required
                             value={eventForm.eventDate}
                             onChange={(e) => setEventForm(prev => ({ ...prev, eventDate: e.target.value }))}
-                            className="bg-background border-border text-foreground"
                           />
                         </div>
                       </div>
                       <DialogFooter>
                         <Button type="submit" disabled={submitting}>
-                          {submitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                          {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                           {submitting ? t.submitting : t.submit}
                         </Button>
                       </DialogFooter>
@@ -1271,7 +1199,7 @@ export function Community({ session, language = 'en', userRole, tempRole }: {
             )}
 
             {events.length === 0 ? (
-              <Card className="bg-card border-border">
+              <Card>
                 <CardContent className="py-8 text-center text-muted-foreground">
                   <CalendarDays className="h-10 w-10 mx-auto mb-3 opacity-50" />
                   <p>{t.noEvents}</p>
@@ -1283,19 +1211,19 @@ export function Community({ session, language = 'en', userRole, tempRole }: {
                 const hasRsvped = !!currentUserId && event.attendees.some(a => a.userId === currentUserId)
                 const isFull = !!event.maxAttendees && event.attendees.length >= event.maxAttendees
                 return (
-                  <Card key={event.id} className="bg-card border-border">
+                  <Card key={event.id}>
                     <CardHeader>
-                      <div className="flex items-start justify-between gap-2">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
                         <div className="space-y-1">
-                          <CardTitle className="text-foreground">{event.title}</CardTitle>
-                          <CardDescription className="text-muted-foreground">{event.description}</CardDescription>
+                          <CardTitle>{event.title}</CardTitle>
+                          <CardDescription>{event.description}</CardDescription>
                         </div>
-                        <Badge className={getStatusColor(event.status)}>{t.statuses[event.status] || event.status}</Badge>
+                        <StatusBadge kind="taskEvent" value={event.status} label={t.statuses[event.status] || event.status} />
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-3">
                       <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                        <Badge variant="outline" className="text-foreground border-border">{event.category}</Badge>
+                        <Badge variant="outline">{event.category}</Badge>
                         <span className="flex items-center gap-1">
                           <CalendarDays className="h-3.5 w-3.5" />
                           {formatDateTime(event.eventDate)}
@@ -1314,23 +1242,23 @@ export function Community({ session, language = 'en', userRole, tempRole }: {
                       {event.attendees.length > 0 && (
                         <div className="flex flex-wrap gap-1">
                           {event.attendees.map(a => (
-                            <Badge key={a.userId} variant="secondary" className="bg-muted text-muted-foreground text-xs">
+                            <Badge key={a.userId} variant="secondary" className="text-xs">
                               {a.userName}
                             </Badge>
                           ))}
                         </div>
                       )}
 
-                      <div className="flex items-center gap-2 pt-2 border-t border-border">
+                      <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border">
                         {!isStaff && event.status === 'upcoming' && (
                           hasRsvped ? (
                             <Button size="sm" variant="outline" onClick={() => handleCancelRsvp(event.id)} disabled={actionId === event.id}>
-                              {actionId === event.id ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <XCircle className="h-4 w-4 mr-1" />}
+                              {actionId === event.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
                               {t.cancelRsvp}
                             </Button>
                           ) : (
                             <Button size="sm" onClick={() => handleRsvp(event.id)} disabled={actionId === event.id || isFull}>
-                              {actionId === event.id ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <CalendarDays className="h-4 w-4 mr-1" />}
+                              {actionId === event.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarDays className="h-4 w-4" />}
                               {isFull ? t.full : t.rsvp}
                             </Button>
                           )
@@ -1339,11 +1267,11 @@ export function Community({ session, language = 'en', userRole, tempRole }: {
                         {isStaff && event.status === 'upcoming' && (
                           <>
                             <Button size="sm" variant="outline" onClick={() => handleEventStatus(event.id, 'completed')} disabled={actionId === event.id}>
-                              <CheckCircle className="h-4 w-4 mr-1" />
+                              <CheckCircle className="h-4 w-4" />
                               {t.markCompleted}
                             </Button>
                             <Button size="sm" variant="outline" onClick={() => handleEventStatus(event.id, 'cancelled')} disabled={actionId === event.id}>
-                              <XCircle className="h-4 w-4 mr-1" />
+                              <XCircle className="h-4 w-4" />
                               {t.cancelAction}
                             </Button>
                           </>
@@ -1353,7 +1281,7 @@ export function Community({ session, language = 'en', userRole, tempRole }: {
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="text-destructive hover:text-destructive hover:bg-muted ml-auto"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10 ml-auto"
                             onClick={() => handleDeleteEvent(event.id)}
                             disabled={actionId === event.id}
                             title={t.delete}
@@ -1378,29 +1306,28 @@ export function Community({ session, language = 'en', userRole, tempRole }: {
                 <Dialog open={ideaDialogOpen} onOpenChange={setIdeaDialogOpen}>
                   <DialogTrigger asChild>
                     <Button size="sm">
-                      <Plus className="h-4 w-4 mr-2" />
+                      <Plus className="h-4 w-4" />
                       {t.proposeIdea}
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="bg-card border-border">
+                  <DialogContent>
                     <DialogHeader>
-                      <DialogTitle className="text-foreground">{t.newIdeaTitle}</DialogTitle>
-                      <DialogDescription className="text-muted-foreground">{t.newIdeaDesc}</DialogDescription>
+                      <DialogTitle>{t.newIdeaTitle}</DialogTitle>
+                      <DialogDescription>{t.newIdeaDesc}</DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleCreateIdea} className="space-y-4">
                       <div className="space-y-2">
-                        <Label htmlFor="idea-title" className="text-foreground">{t.titleLabel} *</Label>
+                        <Label htmlFor="idea-title">{t.titleLabel} *</Label>
                         <Input
                           id="idea-title"
                           required
                           placeholder={t.ideaTitlePlaceholder}
                           value={ideaForm.title}
                           onChange={(e) => setIdeaForm(prev => ({ ...prev, title: e.target.value }))}
-                          className="bg-background border-border text-foreground"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="idea-description" className="text-foreground">{t.descriptionLabel} *</Label>
+                        <Label htmlFor="idea-description">{t.descriptionLabel} *</Label>
                         <Textarea
                           id="idea-description"
                           required
@@ -1408,16 +1335,15 @@ export function Community({ session, language = 'en', userRole, tempRole }: {
                           placeholder={t.descriptionPlaceholder}
                           value={ideaForm.description}
                           onChange={(e) => setIdeaForm(prev => ({ ...prev, description: e.target.value }))}
-                          className="bg-background border-border text-foreground"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label className="text-foreground">{t.category}</Label>
+                        <Label>{t.category}</Label>
                         <Select value={ideaForm.category} onValueChange={(value) => setIdeaForm(prev => ({ ...prev, category: value }))}>
-                          <SelectTrigger className="bg-background border-border text-foreground">
+                          <SelectTrigger>
                             <SelectValue placeholder={t.category} />
                           </SelectTrigger>
-                          <SelectContent className="bg-card shadow-lg z-50 rounded-lg">
+                          <SelectContent>
                             {IDEA_CATEGORIES.map((cat) => (
                               <SelectItem key={cat.en} value={cat.en}>
                                 {language === 'fr' ? cat.fr : cat.en}
@@ -1428,7 +1354,7 @@ export function Community({ session, language = 'en', userRole, tempRole }: {
                       </div>
                       <DialogFooter>
                         <Button type="submit" disabled={submitting}>
-                          {submitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                          {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                           {submitting ? t.submitting : t.submit}
                         </Button>
                       </DialogFooter>
@@ -1439,7 +1365,7 @@ export function Community({ session, language = 'en', userRole, tempRole }: {
             )}
 
             {ideas.length === 0 ? (
-              <Card className="bg-card border-border">
+              <Card>
                 <CardContent className="py-8 text-center text-muted-foreground">
                   <Lightbulb className="h-10 w-10 mx-auto mb-3 opacity-50" />
                   <p>{t.noIdeas}</p>
@@ -1451,19 +1377,19 @@ export function Community({ session, language = 'en', userRole, tempRole }: {
                 const hasVoted = !!currentUserId && (idea.upvotedBy || []).includes(currentUserId)
                 const canDelete = isStaff || idea.createdBy === currentUserId
                 return (
-                  <Card key={idea.id} className="bg-card border-border">
+                  <Card key={idea.id}>
                     <CardHeader>
-                      <div className="flex items-start justify-between gap-2">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
                         <div className="space-y-1">
-                          <CardTitle className="text-foreground">{idea.title}</CardTitle>
-                          <CardDescription className="text-muted-foreground">{idea.description}</CardDescription>
+                          <CardTitle>{idea.title}</CardTitle>
+                          <CardDescription>{idea.description}</CardDescription>
                         </div>
-                        <Badge className={getIdeaStatusColor(idea.status)}>{t.ideaStatuses[idea.status] || idea.status}</Badge>
+                        <Badge variant={getIdeaStatusVariant(idea.status)}>{t.ideaStatuses[idea.status] || idea.status}</Badge>
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-3">
                       <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                        <Badge variant="outline" className="text-foreground border-border">{idea.category}</Badge>
+                        <Badge variant="outline">{idea.category}</Badge>
                         <span className="flex items-center gap-1">
                           <Clock className="h-3.5 w-3.5" />
                           {formatTimeAgo(idea.createdAt, t, language)}
@@ -1479,21 +1405,21 @@ export function Community({ session, language = 'en', userRole, tempRole }: {
                           disabled={actionId === idea.id || !session?.access_token}
                         >
                           {actionId === idea.id ? (
-                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                            <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
-                            <ArrowBigUp className="h-4 w-4 mr-1" />
+                            <ArrowBigUp className="h-4 w-4" />
                           )}
                           {hasVoted ? t.voted : t.vote} ({idea.upvotes || 0})
                         </Button>
 
-                        <IdeaComments ideaId={idea.id} session={session} language={language} tempRole={tempRole} />
+                        <Comments entityType="idea" entityId={idea.id} session={session} language={language} tempRole={tempRole} />
 
                         {isStaff && (
                           <Select value={idea.status} onValueChange={(value) => handleIdeaStatus(idea.id, value)}>
-                            <SelectTrigger className="h-8 w-auto bg-background border-border text-foreground text-xs">
+                            <SelectTrigger className="h-8 w-auto text-xs">
                               <SelectValue />
                             </SelectTrigger>
-                            <SelectContent className="bg-card shadow-lg z-50 rounded-lg">
+                            <SelectContent>
                               {IDEA_STATUSES.map((status) => (
                                 <SelectItem key={status} value={status}>
                                   {t.ideaStatuses[status] || status}
@@ -1507,7 +1433,7 @@ export function Community({ session, language = 'en', userRole, tempRole }: {
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="text-destructive hover:text-destructive hover:bg-muted ml-auto"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10 ml-auto"
                             onClick={() => handleDeleteIdea(idea.id)}
                             disabled={actionId === idea.id}
                             title={t.delete}
@@ -1525,13 +1451,13 @@ export function Community({ session, language = 'en', userRole, tempRole }: {
 
           {/* Leaderboard */}
           <TabsContent value="leaderboard" className="space-y-4">
-            <Card className="bg-card border-border">
+            <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-foreground">
+                <CardTitle className="flex items-center gap-2">
                   <Trophy className="h-5 w-5 text-yellow-500" />
                   {t.leaderboardTitle}
                 </CardTitle>
-                <CardDescription className="text-muted-foreground">{t.leaderboardSubtitle}</CardDescription>
+                <CardDescription>{t.leaderboardSubtitle}</CardDescription>
               </CardHeader>
               <CardContent>
                 {leaderboard.length === 0 ? (
@@ -1546,7 +1472,7 @@ export function Community({ session, language = 'en', userRole, tempRole }: {
                       return (
                         <div
                           key={entry.userId}
-                          className={`flex items-center gap-3 p-3 rounded-lg border ${
+                          className={`flex items-center gap-3 p-3 rounded-xl border ${
                             isCurrentUser ? 'border-primary bg-primary/5' : 'border-border'
                           }`}
                         >
@@ -1562,7 +1488,7 @@ export function Community({ session, language = 'en', userRole, tempRole }: {
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-foreground truncate">{entry.name}</span>
                               {isCurrentUser && (
-                                <Badge variant="outline" className="text-xs text-foreground border-border">{t.you}</Badge>
+                                <Badge variant="outline" className="text-xs">{t.you}</Badge>
                               )}
                             </div>
                             <div className="text-xs text-muted-foreground">{getBadgeDisplay(entry.badge, t)}</div>
@@ -1580,7 +1506,6 @@ export function Community({ session, language = 'en', userRole, tempRole }: {
             </Card>
           </TabsContent>
         </Tabs>
-      </div>
     </div>
   )
 }

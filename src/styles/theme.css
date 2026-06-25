@@ -1,211 +1,200 @@
 /*
-  Global theme tokens and utility classes.
+  "Aurora Civic" design tokens (2026 redesign).
 
-  Tailwind is loaded via a CDN <script> in index.html, so it has no knowledge
-  of the custom shadcn-style semantic tokens (background/foreground/card/
-  muted/border/destructive/etc.) referenced throughout the app. These rules
-  define those tokens (and the color-scale utilities built on top of them)
-  globally so every page themes correctly, regardless of which route is
-  active.
+  Tailwind is compiled at build time via postcss.config.cjs + tailwind.config.js
+  (NOT the cdn.tailwindcss.com runtime script - that script was silently
+  ignoring the entire window.tailwind.config.theme.extend object, so every
+  custom color/dark-mode/shadow/animation token below was generating zero
+  CSS and rendering fully transparent; verified in isolation outside this
+  app too, so it's a CDN-script issue, not an app bug). tailwind.config.js
+  registers background/foreground/card/primary/secondary/muted/accent/
+  destructive/success/warning/info/border/input/ring as Tailwind colors of
+  the form `hsl(var(--token) / <alpha-value>)`. The HSL triplets below are
+  the single source of truth for those tokens - changing a value here
+  re-themes every `bg-*`, `text-*`, `border-*`, `ring-*` utility built on it,
+  in both the light (:root) and dark (.dark) trees, including opacity
+  modifiers like `bg-primary/10`.
+
+  Everything below the token blocks and the @tailwind directives is custom
+  CSS Tailwind can't produce on its own: base font/scrollbar/selection
+  styling and the glassmorphism + gradient helper classes used throughout
+  the redesign.
+
+  Scales (v2): radius uses Tailwind's default scale - rounded-xl for
+  inputs/buttons, rounded-2xl for cards/dialogs/sheets, rounded-full for
+  pills/avatars/badges. Motion timing uses the --duration-* vars below.
 */
 
+@tailwind base;
+@tailwind components;
+
 :root {
-  --background: #F8FAFC;
-  --foreground: #1E293B;
-  --card: #FFFFFF;
-  --muted-foreground: #64748B;
-  --primary: #2563EB;
-  --border: #E2E8F0;
-  --muted: #F1F5F9;
-  --destructive: #EF4444;
-  --destructive-foreground: #FFFFFF;
-  --yellow-100: #FEF9C3;
-  --yellow-200: #FEF08A;
-  --yellow-600: #EAB308;
-  --yellow-800: #CA8A04;
-  --yellow-900: #A16207;
-  --blue-100: #DBEAFE;
-  --blue-200: #BFDBFE;
-  --blue-400: #60A5FA;
-  --blue-600: #2563EB;
-  --blue-800: #1E40AF;
-  --blue-900: #1E3A8A;
-  --green-100: #DCFCE7;
-  --green-200: #BBF7D0;
-  --green-400: #4ADE80;
-  --green-600: #22C55E;
-  --green-800: #15803D;
-  --green-900: #166534;
-  --red-100: #FEE2E2;
-  --red-200: #FECACA;
-  --red-800: #991B1B;
-  --red-900: #7F1D1D;
+  --background: 210 40% 98%;
+  --foreground: 217 33% 17%;
+  --card: 0 0% 100%;
+  --card-foreground: 217 33% 17%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 217 33% 17%;
+  --muted: 210 40% 96%;
+  --muted-foreground: 215 16% 47%;
+  --primary: 239 84% 67%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 226 100% 97%;
+  --secondary-foreground: 244 47% 34%;
+  --accent: 226 100% 97%;
+  --accent-foreground: 244 60% 47%;
+  --border: 214 32% 91%;
+  --input: 214 32% 91%;
+  --input-background: 0 0% 100%;
+  --ring: 239 84% 67%;
+  --destructive: 350 89% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --success: 160 84% 39%;
+  --success-foreground: 0 0% 100%;
+  --warning: 38 92% 50%;
+  --warning-foreground: 217 33% 17%;
+  --info: 199 89% 48%;
+  --info-foreground: 0 0% 100%;
+
+  /* Theme-aware neutral scale (role-based, not literal shade - gray-100 is
+     "subtle surface fill", gray-800 is "high-contrast text", so each flips
+     appropriately between light/dark rather than staying a fixed hex).
+     Used by components/figma/ImageWithFallback.tsx's placeholder. */
   --gray-100: #F3F4F6;
   --gray-200: #E5E7EB;
   --gray-800: #1F2A44;
+
+  --duration-fast: 150ms;
+  --duration-base: 300ms;
+  --duration-slow: 500ms;
 }
 
 .dark {
-  --background: #0F172A;
-  --foreground: #F1F5F9;
-  --card: #1E293B;
-  --muted-foreground: #94A3B8;
-  --primary: #3B82F6;
-  --border: #334155;
-  --muted: #1E293B;
-  --destructive: #DC2626;
-  --destructive-foreground: #F1F5F9;
-  --yellow-100: #FEF9C3;
-  --yellow-200: #FEF08A;
-  --yellow-600: #EAB308;
-  --yellow-800: #CA8A04;
-  --yellow-900: #A16207;
-  --blue-100: #DBEAFE;
-  --blue-200: #BFDBFE;
-  --blue-400: #60A5FA;
-  --blue-600: #2563EB;
-  --blue-800: #1E40AF;
-  --blue-900: #1E3A8A;
-  --green-100: #DCFCE7;
-  --green-200: #BBF7D0;
-  --green-400: #4ADE80;
-  --green-600: #22C55E;
-  --green-800: #15803D;
-  --green-900: #166534;
-  --red-100: #FEE2E2;
-  --red-200: #FECACA;
-  --red-800: #991B1B;
-  --red-900: #7F1D1D;
+  --background: 224 39% 7%;
+  --foreground: 210 40% 98%;
+  --card: 222 39% 11%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222 39% 11%;
+  --popover-foreground: 210 40% 98%;
+  --muted: 222 33% 16%;
+  --muted-foreground: 215 20% 65%;
+  --primary: 234 89% 74%;
+  --primary-foreground: 244 47% 18%;
+  --secondary: 222 33% 18%;
+  --secondary-foreground: 226 100% 87%;
+  --accent: 222 33% 18%;
+  --accent-foreground: 230 96% 84%;
+  --border: 222 30% 22%;
+  --input: 222 30% 22%;
+  --input-background: 222 33% 14%;
+  --ring: 234 89% 74%;
+  --destructive: 350 89% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --success: 158 64% 52%;
+  --success-foreground: 158 64% 12%;
+  --warning: 43 96% 56%;
+  --warning-foreground: 43 96% 12%;
+  --info: 199 92% 60%;
+  --info-foreground: 199 92% 14%;
+
   --gray-100: #1F2A44;
   --gray-200: #2D3748;
   --gray-800: #D1D5DB;
 }
 
+/* ---------- Base ---------- */
+
 html { scroll-behavior: smooth; }
 
 body {
-  background-color: var(--background);
-  color: var(--foreground);
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   transition: background-color 0.3s ease, color 0.3s ease;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
 }
 
-.bg-background { background-color: var(--background); }
-.bg-card { background-color: var(--card); }
-.bg-muted { background-color: var(--muted); }
-.text-foreground { color: var(--foreground); }
-.text-muted-foreground { color: var(--muted-foreground); }
-.text-primary { color: var(--primary); }
-.border-border { border-color: var(--border); }
-.bg-primary { background-color: var(--primary); }
-.text-destructive { color: var(--destructive); }
-.bg-destructive { background-color: var(--destructive); }
-.text-destructive-foreground { color: var(--destructive-foreground); }
+h1, h2, h3, h4, h5, h6, .font-display {
+  font-family: 'Outfit', 'Inter', system-ui, sans-serif;
+}
 
-.bg-yellow-100 { background-color: var(--yellow-100); }
-.bg-yellow-200 { background-color: var(--yellow-200); }
-.text-yellow-600 { color: var(--yellow-600); }
-.text-yellow-800 { color: var(--yellow-800); }
-.bg-yellow-900\/50 { background-color: rgba(161, 98, 7, 0.5); }
-.text-yellow-200 { color: var(--yellow-200); }
+/* Type scale (v2) - default sizing for bare heading elements so screens
+   don't have to hand-pick a Tailwind text-* size on every <h*>. Override
+   with an explicit text-* class where a heading needs to deviate. */
+h1 { font-size: 2rem;     font-weight: 700; line-height: 1.2; }   /* 32px - page/screen title */
+h2 { font-size: 1.5rem;   font-weight: 600; line-height: 1.3; }   /* 24px - section title */
+h3 { font-size: 1.25rem;  font-weight: 600; line-height: 1.3; }   /* 20px - card/module title */
+h4 { font-size: 1rem;     font-weight: 500; line-height: 1.4; }   /* 16px - subheading */
+h5, h6 { font-size: 0.875rem; font-weight: 500; line-height: 1.4; }
 
-.bg-blue-100 { background-color: var(--blue-100); }
-.text-blue-600 { color: var(--blue-600); }
-.text-blue-800 { color: var(--blue-800); }
-.bg-blue-900\/50 { background-color: rgba(30, 58, 138, 0.5); }
-.text-blue-200 { color: var(--blue-200); }
-.text-blue-400 { color: var(--blue-400); }
+::selection {
+  background-color: hsl(var(--primary) / 0.3);
+  color: hsl(var(--foreground));
+}
 
-.bg-green-100 { background-color: var(--green-100); }
-.text-green-600 { color: var(--green-600); }
-.text-green-800 { color: var(--green-800); }
-.bg-green-900\/50 { background-color: rgba(22, 101, 52, 0.5); }
-.text-green-200 { color: var(--green-200); }
-.text-green-400 { color: var(--green-400); }
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
+}
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 9999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--muted-foreground) / 0.5);
+}
 
-.bg-red-100 { background-color: var(--red-100); }
-.text-red-800 { color: var(--red-800); }
-.bg-red-900\/50 { background-color: rgba(127, 29, 29, 0.5); }
-.text-red-200 { color: var(--red-200); }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* ---------- Glassmorphism ---------- */
+
+.glass, .glass-card, .glass-nav {
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+}
+.dark .glass, .dark .glass-card, .dark .glass-nav {
+  background: rgba(20, 27, 46, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.glass-card { background: rgba(255, 255, 255, 0.7); }
+.dark .glass-card { background: rgba(20, 27, 46, 0.6); }
+.glass-nav { background: rgba(255, 255, 255, 0.75); border-width: 0 0 1px 0; }
+.dark .glass-nav { background: rgba(11, 15, 26, 0.7); border-width: 0 0 1px 0; }
+
+/* ---------- Gradients ---------- */
+
+.bg-gradient-brand {
+  background-image: linear-gradient(135deg, #6366F1 0%, #8B5CF6 50%, #22D3EE 100%);
+}
+.text-gradient {
+  background-image: linear-gradient(135deg, #6366F1 0%, #8B5CF6 50%, #22D3EE 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.bg-gradient-mesh {
+  background-image:
+    radial-gradient(at 15% 20%, rgba(99, 102, 241, 0.35) 0px, transparent 50%),
+    radial-gradient(at 85% 0%, rgba(34, 211, 238, 0.25) 0px, transparent 50%),
+    radial-gradient(at 50% 100%, rgba(139, 92, 246, 0.3) 0px, transparent 50%);
+}
+
+/* ---------- Animation helpers ---------- */
+
+.animation-delay-150 { animation-delay: 150ms; }
+.animation-delay-300 { animation-delay: 300ms; }
+.animation-delay-450 { animation-delay: 450ms; }
+.animation-delay-600 { animation-delay: 600ms; }
 
 .bg-gray-100 { background-color: var(--gray-100); }
 .bg-gray-800 { background-color: var(--gray-800); }
 .text-gray-800 { color: var(--gray-800); }
+
+@tailwind utilities;
 .text-gray-200 { color: var(--gray-200); }
-
-button:focus-visible, input:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-}
-
-.animate-spin {
-  animation: spin 1s linear infinite;
-}
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.h-2 { height: 0.5rem; }
-.h-4 { height: 1rem; }
-.w-4 { width: 1rem; }
-.h-5 { height: 1.25rem; }
-.w-5 { width: 1.25rem; }
-.h-12 { height: 3rem; }
-.w-12 { width: 3rem; }
-.text-sm { font-size: 0.875rem; }
-.text-lg { font-size: 1.125rem; }
-.text-2xl { font-size: 1.5rem; }
-.text-xs { font-size: 0.75rem; }
-.font-medium { font-weight: 500; }
-.font-bold { font-weight: 700; }
-.font-semibold { font-weight: 600; }
-.space-y-2 > * + * { margin-top: 0.5rem; }
-.space-y-4 > * + * { margin-top: 1rem; }
-.space-y-6 > * + * { margin-top: 1.5rem; }
-.space-x-1 > * + * { margin-left: 0.25rem; }
-.space-x-2 > * + * { margin-left: 0.5rem; }
-.space-x-4 > * + * { margin-left: 1rem; }
-.p-4 { padding: 1rem; }
-.px-4 { padding-left: 1rem; padding-right: 1rem; }
-.py-8 { padding-top: 2rem; padding-bottom: 2rem; }
-.mb-2 { margin-bottom: 0.5rem; }
-.mb-3 { margin-bottom: 0.75rem; }
-.mb-4 { margin-bottom: 1rem; }
-.ml-1 { margin-left: 0.25rem; }
-.ml-4 { margin-left: 1rem; }
-.pb-3 { padding-bottom: 0.75rem; }
-.rounded-lg { border-radius: 0.5rem; }
-.border { border-width: 1px; }
-.shadow-lg { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
-.max-w-sm { max-width: 24rem; }
-.w-full { width: 100%; }
-.h-32 { height: 8rem; }
-.grid { display: grid; }
-.grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
-.gap-4 { gap: 1rem; }
-.gap-6 { gap: 1.5rem; }
-.flex { display: flex; }
-.items-start { align-items: flex-start; }
-.items-center { align-items: center; }
-.justify-between { justify-content: space-between; }
-.justify-center { justify-content: center; }
-.text-center { text-align: center; }
-.relative { position: relative; }
-.absolute { position: absolute; }
-.top-1\/2 { top: 50%; }
-.right-2 { right: 0.5rem; }
-.transform { transform: translate(0, 0); }
-.-translate-y-1\/2 { transform: translateY(-50%); }
-.transition-all { transition: all 0.3s ease; }
-.hover\:bg-muted:hover { background-color: var(--muted); }
-.hover\:bg-primary\/90:hover { background-color: rgba(59, 130, 246, 0.9); }
-
-@media (min-width: 768px) {
-  .md\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .md\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-}
-
-@media (min-width: 1024px) {
-  .lg\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}

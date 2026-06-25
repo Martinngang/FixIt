@@ -1,13 +1,16 @@
 
 import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card"
-import { Badge } from "./ui/badge"
 import { Alert, AlertDescription } from "./ui/alert"
 import { Skeleton } from "./ui/skeleton"
-import { User, Clock, MapPin, AlertCircle, RefreshCw, Camera, Wrench } from 'lucide-react'
+import { User, Clock, MapPin, AlertCircle, RefreshCw, Camera, Wrench, Award, TrendingUp, CheckCircle2, DollarSign } from 'lucide-react'
 import { Button } from "./ui/button"
+import { Progress } from "./ui/progress"
 import { projectId } from "../utils/supabase/info"
-import { IssueComments } from "./IssueComments"
+import { Comments } from "./Comments"
+import { EntityCard } from "./ui/entity-card"
+import { StatusBadge } from "./ui/status-badge"
+import { EmptyState } from "./ui/empty-state"
 
 const translations = {
   en: {
@@ -32,7 +35,21 @@ const translations = {
     resolved: 'This issue has been resolved! Thank you for reporting it.',
     rejected: 'This issue was not accepted for resolution.',
     taskCompleted: 'Task completed successfully!',
-    taskInProgress: 'Work in progress - keep up the good work!'
+    taskInProgress: 'Work in progress - keep up the good work!',
+    impactTitle: 'Your Impact',
+    impactDesc: 'See the difference your reports have made in the community.',
+    impactPending: 'Your reports are being reviewed. Once they\'re resolved, your impact will appear here.',
+    impactSummary: 'You\'ve helped resolve {count} {issues} in your community, with an estimated value of {amount} returned to the city.',
+    issueSingular: 'issue',
+    issuePlural: 'issues',
+    statReported: 'Reports Submitted',
+    statResolved: 'Issues Resolved',
+    statResolutionRate: 'Resolution Rate',
+    statEstimatedValue: 'Estimated Value to City',
+    avgResolutionDaysLabel: 'avg. {days} days to resolve',
+    byCategory: 'Resolved by Category',
+    resolvedOfReported: '{resolved} of {reported} resolved',
+    estimatedValueNote: 'Illustrative estimate based on typical municipal resolution costs per category.'
   },
   fr: {
     myIssues: 'Mes problèmes',
@@ -56,7 +73,21 @@ const translations = {
     resolved: 'Ce problème a été résolu! Merci de l\'avoir signalé.',
     rejected: 'Ce problème n\'a pas été accepté pour résolution.',
     taskCompleted: 'Tâche terminée avec succès!',
-    taskInProgress: 'Travail en cours - continuez le bon travail!'
+    taskInProgress: 'Travail en cours - continuez le bon travail!',
+    impactTitle: 'Votre impact',
+    impactDesc: 'Découvrez la différence que vos signalements ont apportée à la communauté.',
+    impactPending: 'Vos signalements sont en cours d\'examen. Une fois résolus, votre impact apparaîtra ici.',
+    impactSummary: 'Vous avez contribué à résoudre {count} {issues} dans votre communauté, pour une valeur estimée de {amount} retournée à la ville.',
+    issueSingular: 'problème',
+    issuePlural: 'problèmes',
+    statReported: 'Signalements soumis',
+    statResolved: 'Problèmes résolus',
+    statResolutionRate: 'Taux de résolution',
+    statEstimatedValue: 'Valeur estimée pour la ville',
+    avgResolutionDaysLabel: 'en moy. {days} jours pour résoudre',
+    byCategory: 'Résolutions par catégorie',
+    resolvedOfReported: '{resolved} sur {reported} résolus',
+    estimatedValueNote: 'Estimation illustrative basée sur les coûts de résolution municipaux typiques par catégorie.'
   }
 }
 
@@ -80,38 +111,20 @@ interface Issue {
   assignedAt?: string
 }
 
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'reported':
-      return 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200'
-    case 'in-progress':
-      return 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200'
-    case 'resolved':
-      return 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200'
-    case 'rejected':
-      return 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200'
-    default:
-      return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
-  }
+interface ImpactReport {
+  totalReported: number
+  totalResolved: number
+  resolutionRate: number
+  categoryBreakdown: Record<string, { reported: number; resolved: number }>
+  estimatedSavings: number
+  avgResolutionDays: number | null
 }
 
-const getPriorityColor = (priority: string) => {
-  switch (priority) {
-    case 'high':
-      return 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200'
-    case 'medium':
-      return 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200'
-    case 'low':
-      return 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200'
-    default:
-      return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
-  }
-}
 
 const getStatusMessage = (status: string, updatedAt: string, assignedAt?: string, viewMode?: string) => {
   const updatedDate = new Date(updatedAt).toLocaleDateString()
   const assignedDate = assignedAt ? new Date(assignedAt).toLocaleDateString() : null
-  
+
   if (viewMode === 'technician') {
     switch (status) {
       case 'reported':
@@ -143,6 +156,7 @@ const getStatusMessage = (status: string, updatedAt: string, assignedAt?: string
 
 export function MyIssues({ session, language = 'en', viewMode = 'citizen', tempRole }: { session: any; language?: 'en' | 'fr'; viewMode?: 'citizen' | 'technician'; tempRole?: string | null }) {
   const [issues, setIssues] = useState<Issue[]>([])
+  const [impact, setImpact] = useState<ImpactReport | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -163,15 +177,18 @@ export function MyIssues({ session, language = 'en', viewMode = 'citizen', tempR
       const headers: Record<string, string> = {
         'Authorization': `Bearer ${session.access_token}`
       }
-      
+
       // Add temporary role header for testing if available
       if (tempRole) {
         headers['X-Temp-Role'] = tempRole
       }
-      
-      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-accecacf/${endpoint}`, {
-        headers
-      })
+
+      const [response, impactResponse] = await Promise.all([
+        fetch(`https://${projectId}.supabase.co/functions/v1/make-server-accecacf/${endpoint}`, { headers }),
+        isTechnicianView
+          ? Promise.resolve(null)
+          : fetch(`https://${projectId}.supabase.co/functions/v1/make-server-accecacf/my-impact`, { headers })
+      ])
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}))
@@ -180,6 +197,11 @@ export function MyIssues({ session, language = 'en', viewMode = 'citizen', tempR
 
       const data = await response.json()
       setIssues(data.issues || [])
+
+      if (impactResponse?.ok) {
+        const impactData = await impactResponse.json()
+        setImpact(impactData.impact || null)
+      }
     } catch (err: any) {
       console.error('Fetch my issues error:', err)
       setError(err.message || `Failed to load your ${isTechnicianView ? 'tasks' : 'issues'}`)
@@ -195,9 +217,9 @@ export function MyIssues({ session, language = 'en', viewMode = 'citizen', tempR
 
   if (loading) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 animate-fade-in">
         {[...Array(3)].map((_, i) => (
-          <Card key={i} className="bg-card border-border">
+          <Card key={i}>
             <CardHeader>
               <Skeleton className="h-6 w-48" />
               <Skeleton className="h-4 w-32" />
@@ -213,17 +235,12 @@ export function MyIssues({ session, language = 'en', viewMode = 'citizen', tempR
 
   if (error) {
     return (
-      <Alert variant="destructive">
+      <Alert variant="destructive" className="animate-fade-in">
         <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          {error}
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="ml-2"
-            onClick={fetchMyIssues}
-          >
-            <RefreshCw className="h-4 w-4 mr-1" />
+        <AlertDescription className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <span>{error}</span>
+          <Button variant="outline" size="sm" onClick={fetchMyIssues}>
+            <RefreshCw className="h-4 w-4" />
             Retry
           </Button>
         </AlertDescription>
@@ -239,177 +256,156 @@ export function MyIssues({ session, language = 'en', viewMode = 'citizen', tempR
   const icon = isTechnicianView ? Wrench : User
 
   return (
-    <>
-      <div className="min-h-screen bg-background p-4">
-        <div className="max-w-4xl mx-auto">
-          {loading ? (
-            <div className="space-y-4">
-              {[...Array(3)].map((_, i) => (
-                <Card key={i} className="bg-card border-border">
-                  <CardHeader>
-                    <Skeleton className="h-6 w-48" />
-                    <Skeleton className="h-4 w-32" />
-                  </CardHeader>
-                  <CardContent>
-                    <Skeleton className="h-16 w-full" />
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : error ? (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                {error}
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="ml-2"
-                  onClick={fetchMyIssues}
-                >
-                  <RefreshCw className="h-4 w-4 mr-1" />
-                  Retry
-                </Button>
-              </AlertDescription>
-            </Alert>
-          ) : (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold text-foreground flex items-center space-x-2">
-                    {isTechnicianView ? <Wrench className="h-5 w-5" /> : <User className="h-5 w-5" />}
-                    <span>{title}</span>
-                  </h2>
-                  <p className="text-sm text-muted-foreground">{subtitle}</p>
-                </div>
-                <Button variant="outline" onClick={fetchMyIssues} disabled={loading}>
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  {t.refresh}
-                </Button>
-              </div>
+    <div className="space-y-6 animate-fade-in">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h2 className="font-display text-lg font-semibold text-foreground flex items-center gap-2">
+            {React.createElement(icon, { className: "h-5 w-5 text-primary" })}
+            <span>{title}</span>
+          </h2>
+          <p className="text-sm text-muted-foreground">{subtitle}</p>
+        </div>
+        <Button variant="outline" onClick={fetchMyIssues} disabled={loading} className="self-start sm:self-auto">
+          <RefreshCw className="h-4 w-4" />
+          {t.refresh}
+        </Button>
+      </div>
 
-              {issues.length === 0 ? (
-                <Card className="bg-card border-border">
-                  <CardContent className="text-center py-12">
-                    <div className="h-12 w-12 mx-auto mb-4 flex items-center justify-center">
-                      {React.createElement(icon, { className: "h-12 w-12 text-muted-foreground" })}
+      {!isTechnicianView && impact && impact.totalReported > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Award className="h-5 w-5 text-primary" />
+              <span>{t.impactTitle}</span>
+            </CardTitle>
+            <CardDescription>{t.impactDesc}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {impact.totalResolved === 0 ? (
+              <p className="text-sm text-muted-foreground">{t.impactPending}</p>
+            ) : (
+              <>
+                <p className="text-foreground">
+                  {t.impactSummary
+                    .replace('{count}', String(impact.totalResolved))
+                    .replace('{issues}', impact.totalResolved === 1 ? t.issueSingular : t.issuePlural)
+                    .replace('{amount}', `$${impact.estimatedSavings.toLocaleString()}`)}
+                </p>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="rounded-xl border border-border/50 bg-muted/30 p-3">
+                    <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+                      <MapPin className="h-3.5 w-3.5" />
+                      <span>{t.statReported}</span>
                     </div>
-                    <h3 className="text-lg font-medium text-foreground mb-2">{noItemsTitle}</h3>
-                    <p className="text-muted-foreground mb-4">{noItemsDesc}</p>
-                    <p className="text-sm text-muted-foreground">{noItemsAction}</p>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="space-y-4">
-                  {issues.map((issue) => (
-                    <Card key={issue.id} className="bg-card border-border">
-                      <CardHeader>
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-2 mb-2">
-                              <CardTitle className="text-lg text-foreground">{issue.title}</CardTitle>
-                              <Badge variant="outline" className={getPriorityColor(issue.priority)}>
-                                {issue.priority}
-                              </Badge>
-                            </div>
-                            <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                              <div className="flex items-center space-x-1">
-                                <MapPin className="h-4 w-4" />
-                                <span>{issue.location}</span>
-                              </div>
-                              <div className="flex items-center space-x-1">
-                                <Clock className="h-4 w-4" />
-                                <span>{getStatusMessage(issue.status, issue.updatedAt, issue.assignedAt, viewMode)}</span>
-                              </div>
-                              {isTechnicianView && (
-                                <div className="flex items-center space-x-1">
-                                  <User className="h-4 w-4" />
-                                  <span>{t.reportedBy}: {issue.reporterName}</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          <Badge className={getStatusColor(issue.status)}>
-                            {issue.status.replace('-', ' ').toUpperCase()}
-                          </Badge>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-3">
-                          <p className="text-foreground">{issue.description}</p>
-                          
-                          {issue.photoUrl && (
-                            <div className="mb-3">
-                              <img 
-                                src={issue.photoUrl} 
-                                alt="Issue photo" 
-                                className="w-full max-w-sm h-48 object-cover rounded-lg border border-border"
-                              />
-                            </div>
-                          )}
+                    <div className="text-2xl font-display font-bold text-foreground">{impact.totalReported}</div>
+                  </div>
 
-                          <div className="flex items-center justify-between text-sm text-muted-foreground">
-                            <span>{t.category}: {issue.category}</span>
-                            <span>
-                              {isTechnicianView && issue.assignedAt ? (
-                                `${t.assignedOn}: ${new Date(issue.assignedAt).toLocaleDateString()}`
-                              ) : (
-                                `${t.reported}: ${new Date(issue.reportedAt).toLocaleDateString()}`
-                              )}
+                  <div className="rounded-xl border border-border/50 bg-muted/30 p-3">
+                    <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      <span>{t.statResolved}</span>
+                    </div>
+                    <div className="text-2xl font-display font-bold text-success">{impact.totalResolved}</div>
+                    {impact.avgResolutionDays !== null && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {t.avgResolutionDaysLabel.replace('{days}', String(impact.avgResolutionDays))}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="rounded-xl border border-border/50 bg-muted/30 p-3">
+                    <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+                      <TrendingUp className="h-3.5 w-3.5" />
+                      <span>{t.statResolutionRate}</span>
+                    </div>
+                    <div className="text-2xl font-display font-bold text-foreground">{impact.resolutionRate}%</div>
+                  </div>
+
+                  <div className="rounded-xl border border-border/50 bg-muted/30 p-3">
+                    <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+                      <DollarSign className="h-3.5 w-3.5" />
+                      <span>{t.statEstimatedValue}</span>
+                    </div>
+                    <div className="text-2xl font-display font-bold text-foreground">${impact.estimatedSavings.toLocaleString()}</div>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-sm font-medium text-foreground mb-2">{t.byCategory}</p>
+                  <div className="space-y-2">
+                    {Object.entries(impact.categoryBreakdown)
+                      .filter(([, counts]) => counts.resolved > 0)
+                      .sort(([, a], [, b]) => b.resolved - a.resolved)
+                      .map(([category, counts]) => (
+                        <div key={category}>
+                          <div className="flex items-center justify-between text-sm mb-1">
+                            <span className="text-foreground">{category}</span>
+                            <span className="text-muted-foreground">
+                              {t.resolvedOfReported
+                                .replace('{resolved}', String(counts.resolved))
+                                .replace('{reported}', String(counts.reported))}
                             </span>
                           </div>
-
-                          {issue.adminNote && (
-                            <div className="bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-                              <h4 className="font-medium text-blue-900 dark:text-blue-100 text-sm mb-1">{t.adminNote}</h4>
-                              <p className="text-blue-800 dark:text-blue-200 text-sm">{issue.adminNote}</p>
-                            </div>
-                          )}
-
-                          {issue.technicianNote && (
-                            <div className="bg-purple-50 dark:bg-purple-950/50 border border-purple-200 dark:border-purple-800 rounded-lg p-3">
-                              <h4 className="font-medium text-purple-900 dark:text-purple-100 text-sm mb-1">{t.technicianNote}</h4>
-                              <p className="text-purple-800 dark:text-purple-200 text-sm">{issue.technicianNote}</p>
-                            </div>
-                          )}
-
-                          {issue.status === 'resolved' && (
-                            <div className="bg-green-50 dark:bg-green-950/50 border border-green-200 dark:border-green-800 rounded-lg p-3">
-                              <p className="text-green-800 dark:text-green-200 text-sm font-medium">
-                                ✅ {isTechnicianView ? t.taskCompleted : t.resolved}
-                              </p>
-                            </div>
-                          )}
-
-                          {issue.status === 'rejected' && (
-                            <div className="bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 rounded-lg p-3">
-                              <p className="text-red-800 dark:text-red-200 text-sm font-medium">
-                                ❌ {t.rejected}
-                              </p>
-                            </div>
-                          )}
-
-                          {issue.status === 'in-progress' && isTechnicianView && (
-                            <div className="bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-                              <p className="text-blue-800 dark:text-blue-200 text-sm font-medium">
-                                🔧 {t.taskInProgress}
-                              </p>
-                            </div>
-                          )}
-
-                          <div className="flex justify-end">
-                            <IssueComments issueId={issue.id} session={session} language={language} tempRole={tempRole} />
-                          </div>
+                          <Progress value={(counts.resolved / counts.reported) * 100} className="h-2" />
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                      ))}
+                  </div>
                 </div>
-              )}
-            </div>
-          )}
+
+                <p className="text-xs text-muted-foreground">{t.estimatedValueNote}</p>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {issues.length === 0 ? (
+        <Card>
+          <CardContent>
+            <EmptyState icon={icon} title={noItemsTitle} description={`${noItemsDesc}. ${noItemsAction}.`} />
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {issues.map((issue) => (
+            <EntityCard
+              key={issue.id}
+              title={issue.title}
+              subtitle={issue.description}
+              badges={[
+                <StatusBadge key="priority" kind="priority" value={issue.priority} label={issue.priority} />,
+                <StatusBadge key="status" kind="status" value={issue.status} label={issue.status.replace('-', ' ')} />,
+              ]}
+              metadata={[
+                { icon: MapPin, label: issue.location },
+                { icon: Clock, label: getStatusMessage(issue.status, issue.updatedAt, issue.assignedAt, viewMode) },
+                ...(isTechnicianView ? [{ icon: User, label: `${t.reportedBy}: ${issue.reporterName}` }] : []),
+              ]}
+              photoUrl={issue.photoUrl}
+              notes={[
+                ...(issue.adminNote ? [{ icon: AlertCircle, label: t.adminNote, content: issue.adminNote }] : []),
+                ...(issue.technicianNote ? [{ icon: Wrench, label: t.technicianNote, content: issue.technicianNote }] : []),
+              ]}
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-sm text-muted-foreground mt-1">
+                <span>{t.category}: {issue.category}</span>
+                <span>
+                  {isTechnicianView && issue.assignedAt ? (
+                    `${t.assignedOn}: ${new Date(issue.assignedAt).toLocaleDateString()}`
+                  ) : (
+                    `${t.reported}: ${new Date(issue.reportedAt).toLocaleDateString()}`
+                  )}
+                </span>
+              </div>
+
+              <div className="flex justify-end mt-3">
+                <Comments entityType="issue" entityId={issue.id} session={session} language={language} tempRole={tempRole} />
+              </div>
+            </EntityCard>
+          ))}
         </div>
-      </div>
-    </>
+      )}
+    </div>
   )
 }

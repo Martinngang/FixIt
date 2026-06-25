@@ -21,15 +21,26 @@ export async function getProfile(userId: string, user: any) {
     avatarUrl: profile.avatarUrl,
     role: user.user_metadata?.role || 'citizen',
     categories: user.user_metadata?.categories || [],
+    availability: profile.availability || 'available',
+    location: profile.location || null,
+    locationUpdatedAt: profile.locationUpdatedAt || null,
     created_at: user.created_at,
     last_sign_in_at: user.last_sign_in_at,
-    reputation
+    reputation,
+    marketplaceStatus: user.user_metadata?.marketplaceStatus,
+    stripeOnboardingComplete: !!user.user_metadata?.stripeOnboardingComplete,
   }
 
   return userData
 }
 
-export async function updateProfile(userId: string, user: any, updates: { name?: string; phone?: string; address?: string }) {
+export async function updateProfile(userId: string, user: any, updates: {
+  name?: string
+  phone?: string
+  address?: string
+  availability?: 'available' | 'busy' | 'off_duty'
+  location?: { lat: number; lng: number } | null
+}) {
   // Update user metadata for name
   if (updates.name !== undefined) {
     const { error: updateError } = await supabase.auth.admin.updateUserById(userId, {
@@ -42,11 +53,18 @@ export async function updateProfile(userId: string, user: any, updates: { name?:
     if (updateError) throw updateError
   }
 
-  // Store additional profile data
+  // Merge with existing profile data so unrelated fields (e.g. avatarUrl,
+  // availability) set by other endpoints aren't wiped out by this update.
+  const existingProfile = await kv.get(`profile:${userId}`) || {}
+
   const profileData = {
-    name: updates.name !== undefined ? updates.name : user.user_metadata?.name,
-    phone: updates.phone !== undefined ? updates.phone : undefined,
-    address: updates.address !== undefined ? updates.address : undefined,
+    ...existingProfile,
+    name: updates.name !== undefined ? updates.name : existingProfile.name ?? user.user_metadata?.name,
+    phone: updates.phone !== undefined ? updates.phone : existingProfile.phone,
+    address: updates.address !== undefined ? updates.address : existingProfile.address,
+    availability: updates.availability !== undefined ? updates.availability : existingProfile.availability,
+    location: updates.location !== undefined ? updates.location : existingProfile.location,
+    locationUpdatedAt: updates.location !== undefined ? new Date().toISOString() : existingProfile.locationUpdatedAt,
     updatedAt: new Date().toISOString()
   }
 
@@ -57,20 +75,21 @@ export async function updateProfile(userId: string, user: any, updates: { name?:
 
   await kv.set(`profile:${userId}`, cleanProfileData)
 
-  // Get current profile to include avatarUrl
-  const currentProfile = await kv.get(`profile:${userId}`) || {}
   const reputation = await getUserReputation(userId)
 
   // Return updated user data
   const updatedUser = {
     id: user.id,
     email: user.email,
-    name: updates.name !== undefined ? updates.name : user.user_metadata?.name,
+    name: cleanProfileData.name,
     phone: cleanProfileData.phone,
     address: cleanProfileData.address,
-    avatarUrl: currentProfile.avatarUrl,
+    avatarUrl: cleanProfileData.avatarUrl,
     role: user.user_metadata?.role || 'citizen',
     categories: user.user_metadata?.categories || [],
+    availability: cleanProfileData.availability || 'available',
+    location: cleanProfileData.location || null,
+    locationUpdatedAt: cleanProfileData.locationUpdatedAt || null,
     created_at: user.created_at,
     last_sign_in_at: user.last_sign_in_at,
     reputation

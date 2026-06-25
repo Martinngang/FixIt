@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card.tsx"
 import { Badge } from "./ui/badge.tsx"
+import { CredibilityBadge } from "./ui/credibility-badge.tsx"
 import { useToast } from "./ToastContext.tsx";
 import { Button } from "./ui/button.tsx"
 import { Input } from "./ui/input.tsx"
@@ -11,22 +12,31 @@ import { Alert, AlertDescription } from "./ui/alert.tsx"
 import { Skeleton } from "./ui/skeleton.tsx"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs.tsx"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog.tsx"
-import { 
-  Wrench, 
-  MapPin, 
-  Clock, 
-  User, 
-  AlertTriangle, 
-  CheckCircle, 
-  XCircle, 
-  AlertCircle, 
+import { EntityCard } from "./ui/entity-card.tsx"
+import { StatusBadge } from "./ui/status-badge.tsx"
+import { EmptyState } from "./ui/empty-state.tsx"
+import { StatusUpdateDialog } from "./ui/status-update-dialog.tsx"
+import {
+  Wrench,
+  MapPin,
+  Clock,
+  User,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
   Calendar,
   FileText,
   Camera,
   Navigation,
   Loader2,
   Save,
-  Eye
+  Eye,
+  Wifi,
+  Coffee,
+  Moon,
+  MapPinned,
+  Package
 } from 'lucide-react'
 import { projectId } from "../utils/supabase/info.ts"
 
@@ -47,51 +57,36 @@ interface Issue {
   photoUrl?: string
   coordinates?: { lat: number; lng: number }
   assignedTo?: string
+  credibilityScore?: number
+  credibilityLevel?: 'high' | 'medium' | 'low'
+  credibilitySignals?: {
+    hasPhoto: boolean
+    hasCoordinates: boolean
+    descriptionLength: number
+    corroboratingReports: number
+    upvotes: number
+    reporterRejectionRate: number | null
+  }
   estimatedCompletionDate?: string
+  requiredParts?: Array<{
+    id: string
+    itemId: string
+    itemName: string
+    unit: string
+    quantityRequested: number
+    quantityFulfilled: number
+    status: 'fulfilled' | 'shortage'
+    requestedAt: string
+  }>
 }
 
-const getStatusIcon = (status: string) => {
-  switch (status) {
-    case 'reported':
-      return <AlertCircle className="h-4 w-4" />
-    case 'in-progress':
-      return <Clock className="h-4 w-4" />
-    case 'resolved':
-      return <CheckCircle className="h-4 w-4" />
-    case 'rejected':
-      return <XCircle className="h-4 w-4" />
-    default:
-      return <AlertCircle className="h-4 w-4" />
-  }
+interface InventoryItem {
+  id: string
+  name: string
+  unit: string
+  quantityOnHand: number
 }
 
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'reported':
-      return 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200'
-    case 'in-progress':
-      return 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200'
-    case 'resolved':
-      return 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200'
-    case 'rejected':
-      return 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200'
-    default:
-      return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
-  }
-}
-
-const getPriorityColor = (priority: string) => {
-  switch (priority) {
-    case 'high':
-      return 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200'
-    case 'medium':
-      return 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200'
-    case 'low':
-      return 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200'
-    default:
-      return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
-  }
-}
 
 const translations = {
   en: {
@@ -139,7 +134,35 @@ const translations = {
     assignedTo: 'Assigned to',
     workCompleted: 'Work completed successfully',
     requiresFollowUp: 'Requires follow-up',
-    cannotComplete: 'Cannot complete - requires additional resources'
+    cannotComplete: 'Cannot complete - requires additional resources',
+    myStatus: 'My Status',
+    myStatusDesc: 'Let dispatch know your availability and location for smarter assignment suggestions.',
+    availability: 'Availability',
+    available: 'Available',
+    busy: 'Busy',
+    offDuty: 'Off Duty',
+    updateLocation: 'Update My Location',
+    locatingLocation: 'Locating...',
+    locationUpdated: 'Location updated',
+    locationError: 'Failed to get your location',
+    statusUpdated: 'Availability updated',
+    statusUpdateError: 'Failed to update availability',
+    lastLocationUpdate: 'Last updated',
+    requestParts: 'Request Parts',
+    requestPartsTitle: 'Request Parts',
+    requestPartsDesc: 'Request inventory items needed to complete this issue.',
+    selectPart: 'Part',
+    selectPartPlaceholder: 'Select a part',
+    quantity: 'Quantity',
+    requiredParts: 'Requested Parts',
+    fulfilled: 'Fulfilled',
+    shortage: 'Shortage',
+    noInventoryItems: 'No inventory items available',
+    partsRequested: 'Parts requested',
+    partsRequestError: 'Failed to request parts',
+    requestSubmit: 'Request',
+    requesting: 'Requesting...',
+    availableQty: 'available'
   },
   fr: {
     technicianPanel: 'Panneau technicien',
@@ -186,7 +209,35 @@ const translations = {
     assignedTo: 'Assigné à',
     workCompleted: 'Travail terminé avec succès',
     requiresFollowUp: 'Nécessite un suivi',
-    cannotComplete: 'Impossible de terminer - nécessite des ressources supplémentaires'
+    cannotComplete: 'Impossible de terminer - nécessite des ressources supplémentaires',
+    myStatus: 'Mon statut',
+    myStatusDesc: 'Indiquez votre disponibilité et votre position pour de meilleures suggestions d\'affectation.',
+    availability: 'Disponibilité',
+    available: 'Disponible',
+    busy: 'Occupé',
+    offDuty: 'Hors service',
+    updateLocation: 'Mettre à jour ma position',
+    locatingLocation: 'Localisation...',
+    locationUpdated: 'Position mise à jour',
+    locationError: 'Impossible d\'obtenir votre position',
+    statusUpdated: 'Disponibilité mise à jour',
+    statusUpdateError: 'Échec de la mise à jour de la disponibilité',
+    lastLocationUpdate: 'Dernière mise à jour',
+    requestParts: 'Demander des pièces',
+    requestPartsTitle: 'Demander des pièces',
+    requestPartsDesc: 'Demandez les articles d\'inventaire nécessaires pour terminer ce problème.',
+    selectPart: 'Pièce',
+    selectPartPlaceholder: 'Sélectionner une pièce',
+    quantity: 'Quantité',
+    requiredParts: 'Pièces demandées',
+    fulfilled: 'Fournie',
+    shortage: 'Pénurie',
+    noInventoryItems: 'Aucun article d\'inventaire disponible',
+    partsRequested: 'Pièces demandées avec succès',
+    partsRequestError: 'Échec de la demande de pièces',
+    requestSubmit: 'Demander',
+    requesting: 'Demande en cours...',
+    availableQty: 'disponible'
   }
 }
 
@@ -201,6 +252,15 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
     technicianNote: '',
     estimatedCompletion: ''
   })
+  const [availability, setAvailability] = useState<'available' | 'busy' | 'off_duty'>('available')
+  const [locationUpdatedAt, setLocationUpdatedAt] = useState<string | null>(null)
+  const [savingAvailability, setSavingAvailability] = useState(false)
+  const [locating, setLocating] = useState(false)
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([])
+  const [partsDialogOpen, setPartsDialogOpen] = useState(false)
+  const [partsTargetIssue, setPartsTargetIssue] = useState<Issue | null>(null)
+  const [partsForm, setPartsForm] = useState({ itemId: '', quantity: '1' })
+  const [requestingParts, setRequestingParts] = useState(false)
 
   const t = translations[language]
   const { addToast } = useToast();
@@ -237,11 +297,101 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
     }
   }
 
+  const fetchProfile = async () => {
+    try {
+      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-accecacf/profile`, {
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`
+        }
+      })
+      if (!response.ok) return
+      const data = await response.json()
+      setAvailability(data.user?.availability || 'available')
+      setLocationUpdatedAt(data.user?.locationUpdatedAt || null)
+    } catch (err) {
+      console.error('Fetch profile error:', err)
+    }
+  }
+
+  const fetchInventory = async () => {
+    try {
+      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-accecacf/inventory`, {
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`
+        }
+      })
+      if (!response.ok) return
+      const data = await response.json()
+      setInventoryItems(data.items || [])
+    } catch (err) {
+      console.error('Fetch inventory error:', err)
+    }
+  }
+
   useEffect(() => {
     if (session?.access_token) {
       fetchIssues()
+      fetchProfile()
+      fetchInventory()
     }
   }, [session])
+
+  const updateProfile = async (updates: Record<string, unknown>) => {
+    const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-accecacf/profile`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session?.access_token}`
+      },
+      body: JSON.stringify(updates)
+    })
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.error || `API error: ${response.status} ${response.statusText}`)
+    }
+    return response.json()
+  }
+
+  const handleAvailabilityChange = async (value: 'available' | 'busy' | 'off_duty') => {
+    setSavingAvailability(true)
+    try {
+      await updateProfile({ availability: value })
+      setAvailability(value)
+      addToast(t.statusUpdated, 'success')
+    } catch (err: any) {
+      handleError(err.message || t.statusUpdateError)
+    } finally {
+      setSavingAvailability(false)
+    }
+  }
+
+  const handleUpdateLocation = () => {
+    if (!navigator.geolocation) {
+      handleError(t.locationError)
+      return
+    }
+
+    setLocating(true)
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const data = await updateProfile({
+            location: { lat: position.coords.latitude, lng: position.coords.longitude }
+          })
+          setLocationUpdatedAt(data.user?.locationUpdatedAt || new Date().toISOString())
+          addToast(t.locationUpdated, 'success')
+        } catch (err: any) {
+          handleError(err.message || t.locationError)
+        } finally {
+          setLocating(false)
+        }
+      },
+      () => {
+        handleError(t.locationError)
+        setLocating(false)
+      }
+    )
+  }
 
   const handleUpdateIssue = async () => {
     if (!selectedIssue) return
@@ -328,6 +478,45 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
     setIsUpdateDialogOpen(true)
   }
 
+  const openPartsDialog = (issue: Issue) => {
+    setPartsTargetIssue(issue)
+    setPartsForm({ itemId: inventoryItems[0]?.id || '', quantity: '1' })
+    setPartsDialogOpen(true)
+  }
+
+  const handleRequestParts = async () => {
+    if (!partsTargetIssue || !partsForm.itemId) return
+
+    setRequestingParts(true)
+
+    try {
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/make-server-accecacf/issues/${partsTargetIssue.id}/request-parts`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token}`
+          },
+          body: JSON.stringify({ itemId: partsForm.itemId, quantity: Number(partsForm.quantity) })
+        }
+      )
+
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.error || t.partsRequestError)
+
+      setIssues(prev => prev.map(i => i.id === data.issue.id ? data.issue : i))
+      setInventoryItems(prev => prev.map(i => i.id === data.item.id ? data.item : i))
+      setPartsDialogOpen(false)
+      addToast(t.partsRequested, 'success')
+    } catch (err: any) {
+      console.error('Request parts error:', err)
+      handleError(err.message || t.partsRequestError)
+    } finally {
+      setRequestingParts(false)
+    }
+  }
+
   const openGoogleMaps = (issue: Issue) => {
     if (issue.coordinates) {
       const url = `https://www.google.com/maps?q=${issue.coordinates.lat},${issue.coordinates.lng}`
@@ -342,81 +531,142 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
   const myAssignments = issues.filter(issue => issue.assignedTo === technicianId)
   const unassignedIssues = issues.filter(issue => !issue.assignedTo || issue.assignedTo === '')
 
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {[...Array(3)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader className="pb-3">
+                <Skeleton className="h-4 w-24" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-16" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        {[...Array(3)].map((_, i) => (
+          <Card key={i}>
+            <CardHeader>
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-32" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-16 w-full" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    )
+  }
+
   return (
-    <>
-      <div className="min-h-screen bg-background p-4">
-        <div className="max-w-4xl mx-auto">
-          {loading ? (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {[...Array(3)].map((_, i) => (
-                  <Card key={i} className="bg-card border-border">
-                    <CardHeader className="pb-3">
-                      <Skeleton className="h-4 w-24" />
-                    </CardHeader>
-                    <CardContent>
-                      <Skeleton className="h-8 w-16" />
-                    </CardContent>
-                  </Card>
-                ))}
+      <div className="space-y-6 animate-fade-in">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Wrench className="h-5 w-5 text-primary" />
+              <span>{t.technicianPanel}</span>
+            </CardTitle>
+            <CardDescription>
+              {t.fieldOperations}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="text-center p-4 bg-muted rounded-xl">
+                <div className="text-2xl font-display font-bold text-info mb-2">
+                  {myAssignments.length}
+                </div>
+                <div className="text-sm text-muted-foreground">{t.myAssignments}</div>
               </div>
-              <div className="space-y-4">
-                {[...Array(3)].map((_, i) => (
-                  <Card key={i} className="bg-card border-border">
-                    <CardHeader>
-                      <Skeleton className="h-6 w-48" />
-                      <Skeleton className="h-4 w-32" />
-                    </CardHeader>
-                    <CardContent>
-                      <Skeleton className="h-16 w-full" />
-                    </CardContent>
-                  </Card>
-                ))}
+              <div className="text-center p-4 bg-muted rounded-xl">
+                <div className="text-2xl font-display font-bold text-warning mb-2">
+                  {unassignedIssues.length}
+                </div>
+                <div className="text-sm text-muted-foreground">{t.unassigned}</div>
+              </div>
+              <div className="text-center p-4 bg-muted rounded-xl">
+                <div className="text-2xl font-display font-bold text-success mb-2">
+                  {issues.filter(i => i.status === 'resolved').length}
+                </div>
+                <div className="text-sm text-muted-foreground">{t.resolved}</div>
               </div>
             </div>
-          ) : (
-            <div className="space-y-6">
-              <Card className="bg-card border-border">
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2 text-foreground">
-                    <Wrench className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                    <span>{t.technicianPanel}</span>
-                  </CardTitle>
-                  <CardDescription className="text-muted-foreground">
-                    {t.fieldOperations}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="text-center p-4 bg-muted rounded-lg">
-                      <div className="text-2xl font-bold text-blue-600 dark:text-blue-400 mb-2">
-                        {myAssignments.length}
-                      </div>
-                      <div className="text-sm text-muted-foreground">{t.myAssignments}</div>
-                    </div>
-                    <div className="text-center p-4 bg-muted rounded-lg">
-                      <div className="text-2xl font-bold text-orange-600 dark:text-orange-400 mb-2">
-                        {unassignedIssues.length}
-                      </div>
-                      <div className="text-sm text-muted-foreground">{t.unassigned}</div>
-                    </div>
-                    <div className="text-center p-4 bg-muted rounded-lg">
-                      <div className="text-2xl font-bold text-green-600 dark:text-green-400 mb-2">
-                        {issues.filter(i => i.status === 'resolved').length}
-                      </div>
-                      <div className="text-sm text-muted-foreground">{t.resolved}</div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MapPinned className="h-5 w-5 text-primary" />
+              <span>{t.myStatus}</span>
+            </CardTitle>
+            <CardDescription>
+              {t.myStatusDesc}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col sm:flex-row sm:items-end gap-4">
+              <div className="flex-1 space-y-2">
+                <Label>{t.availability}</Label>
+                <Select
+                  value={availability}
+                  onValueChange={(value) => handleAvailabilityChange(value as 'available' | 'busy' | 'off_duty')}
+                  disabled={savingAvailability}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="available">
+                      <span className="flex items-center gap-2">
+                        <Wifi className="h-4 w-4 text-success" />
+                        <span>{t.available}</span>
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="busy">
+                      <span className="flex items-center gap-2">
+                        <Coffee className="h-4 w-4 text-warning" />
+                        <span>{t.busy}</span>
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="off_duty">
+                      <span className="flex items-center gap-2">
+                        <Moon className="h-4 w-4 text-muted-foreground" />
+                        <span>{t.offDuty}</span>
+                      </span>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Button type="button" variant="outline" onClick={handleUpdateLocation} disabled={locating}>
+                  {locating ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Navigation className="h-4 w-4" />
+                  )}
+                  {locating ? t.locatingLocation : t.updateLocation}
+                </Button>
+                {locationUpdatedAt && (
+                  <p className="text-xs text-muted-foreground">
+                    {t.lastLocationUpdate}: {new Date(locationUpdatedAt).toLocaleString()}
+                  </p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
               <Tabs defaultValue="assignments" className="space-y-6">
-                <TabsList>
-                  <TabsTrigger value="assignments" className="flex items-center space-x-2">
+                <TabsList className="grid w-full grid-cols-2 sm:inline-flex sm:w-auto">
+                  <TabsTrigger value="assignments" className="gap-1.5">
                     <User className="h-4 w-4" />
                     <span>{t.myAssignments}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="all-issues" className="flex items-center space-x-2">
+                  <TabsTrigger value="all-issues" className="gap-1.5">
                     <MapPin className="h-4 w-4" />
                     <span>{t.allIssues}</span>
                   </TabsTrigger>
@@ -424,259 +674,191 @@ export function TechnicianPanel({ session, language = 'en' }: { session: any; la
 
                 <TabsContent value="assignments" className="space-y-4">
                   {myAssignments.length === 0 ? (
-                    <Card className="bg-card border-border">
-                      <CardContent className="text-center py-8">
-                        <Wrench className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                        <p className="text-muted-foreground">{t.noAssignments}</p>
-                        <p className="text-sm text-muted-foreground mt-2">
-                          {t.noAssignmentsDesc}
-                        </p>
-                      </CardContent>
-                    </Card>
+                    <EmptyState icon={Wrench} title={t.noAssignments} description={t.noAssignmentsDesc} />
                   ) : (
                     myAssignments.map((issue) => (
-                      <Card key={issue.id} className="bg-card border-border">
-                        <CardContent className="p-6">
-                          <div className="flex items-start justify-between mb-4">
-                            <div className="flex-1">
-                              <div className="flex items-center space-x-2 mb-2">
-                                <h3 className="font-semibold text-foreground">{issue.title}</h3>
-                                <Badge className={getPriorityColor(issue.priority)}>
-                                  {t[issue.priority as keyof typeof t] || issue.priority}
-                                </Badge>
-                                <Badge className={getStatusColor(issue.status)}>
-                                  {getStatusIcon(issue.status)}
-                                  <span className="ml-1 capitalize">
-                                    {t[issue.status.replace('-', '') as keyof typeof t] || issue.status.replace('-', ' ')}
-                                  </span>
-                                </Badge>
-                              </div>
-                              <p className="text-muted-foreground text-sm mb-3">{issue.description}</p>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-muted-foreground">
-                                <div className="flex items-center space-x-1">
-                                  <MapPin className="h-4 w-4" />
-                                  <span>{issue.location}</span>
-                                </div>
-                                <div className="flex items-center space-x-1">
-                                  <Calendar className="h-4 w-4" />
-                                  <span>{new Date(issue.reportedAt).toLocaleDateString()}</span>
-                                </div>
-                              </div>
-                              {issue.technicianNote && (
-                                <div className="mt-3 p-3 bg-muted rounded-lg">
-                                  <div className="flex items-center space-x-1 mb-1">
-                                    <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                                    <span className="text-sm font-medium text-foreground">{t.technicianNote}</span>
+                      <EntityCard
+                        key={issue.id}
+                        title={issue.title}
+                        subtitle={issue.description}
+                        badges={[
+                          <StatusBadge key="priority" kind="priority" value={issue.priority} label={t[issue.priority as keyof typeof t] || issue.priority} />,
+                          <StatusBadge key="status" kind="status" value={issue.status} label={t[issue.status.replace('-', '') as keyof typeof t] || issue.status.replace('-', ' ')} />,
+                          ...(issue.credibilityLevel && issue.credibilityLevel !== 'high' ? [
+                            <CredibilityBadge key="cred" level={issue.credibilityLevel} score={issue.credibilityScore} signals={issue.credibilitySignals} />,
+                          ] : []),
+                        ]}
+                        metadata={[
+                          { icon: MapPin, label: issue.location },
+                          { icon: Calendar, label: new Date(issue.reportedAt).toLocaleDateString() },
+                        ]}
+                        notes={[
+                          ...(issue.technicianNote ? [{ icon: FileText, label: t.technicianNote, content: issue.technicianNote }] : []),
+                          ...(issue.requiredParts && issue.requiredParts.length > 0 ? [{
+                            icon: Package,
+                            label: t.requiredParts,
+                            content: (
+                              <div className="space-y-2">
+                                {issue.requiredParts.map((part) => (
+                                  <div key={part.id} className="flex items-center justify-between">
+                                    <span>{part.itemName} x{part.quantityRequested} {part.unit}</span>
+                                    <Badge variant={part.status === 'fulfilled' ? 'success' : 'destructive'}>
+                                      {part.status === 'fulfilled' ? t.fulfilled : t.shortage}
+                                    </Badge>
                                   </div>
-                                  <p className="text-sm text-muted-foreground">{issue.technicianNote}</p>
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex flex-col space-y-2 ml-4">
-                              <Button
-                                size="sm"
-                                onClick={() => openUpdateDialog(issue)}
-                                className="flex items-center space-x-1"
-                              >
-                                <Save className="h-4 w-4" />
-                                <span>{t.updateStatus}</span>
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => openGoogleMaps(issue)}
-                                className="flex items-center space-x-1"
-                              >
-                                <Navigation className="h-4 w-4" />
-                                <span>{t.viewOnMap}</span>
-                              </Button>
-                              {issue.photoUrl && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => window.open(issue.photoUrl, '_blank')}
-                                  className="flex items-center space-x-1"
-                                >
-                                  <Eye className="h-4 w-4" />
-                                  <span>{t.viewPhoto}</span>
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
+                                ))}
+                              </div>
+                            ),
+                          }] : []),
+                        ]}
+                        actions={[
+                          { icon: Save, label: t.updateStatus, onClick: () => openUpdateDialog(issue), variant: 'default' },
+                          { icon: Package, label: t.requestParts, onClick: () => openPartsDialog(issue) },
+                          { icon: Navigation, label: t.viewOnMap, onClick: () => openGoogleMaps(issue) },
+                          ...(issue.photoUrl ? [{ icon: Eye, label: t.viewPhoto, onClick: () => window.open(issue.photoUrl, '_blank') }] : []),
+                        ]}
+                      />
                     ))
                   )}
                 </TabsContent>
 
                 <TabsContent value="all-issues" className="space-y-4">
                   {unassignedIssues.length === 0 ? (
-                    <Card className="bg-card border-border">
-                      <CardContent className="text-center py-8">
-                        <CheckCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                        <p className="text-muted-foreground">{t.noIssues}</p>
-                        <p className="text-sm text-muted-foreground mt-2">
-                          {t.noIssuesDesc}
-                        </p>
-                      </CardContent>
-                    </Card>
+                    <EmptyState icon={CheckCircle} title={t.noIssues} description={t.noIssuesDesc} />
                   ) : (
                     unassignedIssues.map((issue) => (
-                      <Card key={issue.id} className="bg-card border-border">
-                        <CardContent className="p-6">
-                          <div className="flex items-start justify-between mb-4">
-                            <div className="flex-1">
-                              <div className="flex items-center space-x-2 mb-2">
-                                <h3 className="font-semibold text-foreground">{issue.title}</h3>
-                                <Badge className={getPriorityColor(issue.priority)}>
-                                  {t[issue.priority as keyof typeof t] || issue.priority}
-                                </Badge>
-                                <Badge className={getStatusColor(issue.status)}>
-                                  {getStatusIcon(issue.status)}
-                                  <span className="ml-1 capitalize">
-                                    {t[issue.status.replace('-', '') as keyof typeof t] || issue.status.replace('-', ' ')}
-                                  </span>
-                                </Badge>
-                              </div>
-                              <p className="text-muted-foreground text-sm mb-3">{issue.description}</p>
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-muted-foreground">
-                                <div className="flex items-center space-x-1">
-                                  <MapPin className="h-4 w-4" />
-                                  <span>{issue.location}</span>
-                                </div>
-                                <div className="flex items-center space-x-1">
-                                  <User className="h-4 w-4" />
-                                  <span>{issue.reporterName}</span>
-                                </div>
-                                <div className="flex items-center space-x-1">
-                                  <Calendar className="h-4 w-4" />
-                                  <span>{new Date(issue.reportedAt).toLocaleDateString()}</span>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex flex-col space-y-2 ml-4">
-                              <Button
-                                size="sm"
-                                onClick={() => handleAssignToMe(issue)}
-                                disabled={updateLoading === issue.id}
-                                className="flex items-center space-x-1"
-                              >
-                                {updateLoading ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <User className="h-4 w-4" />
-                                )}
-                                <span>{t.assignToMe}</span>
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => openGoogleMaps(issue)}
-                                className="flex items-center space-x-1"
-                              >
-                                <Navigation className="h-4 w-4" />
-                                <span>{t.viewOnMap}</span>
-                              </Button>
-                              {issue.photoUrl && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => window.open(issue.photoUrl, '_blank')}
-                                  className="flex items-center space-x-1"
-                                >
-                                  <Eye className="h-4 w-4" />
-                                  <span>{t.viewPhoto}</span>
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
+                      <EntityCard
+                        key={issue.id}
+                        title={issue.title}
+                        subtitle={issue.description}
+                        badges={[
+                          <StatusBadge key="priority" kind="priority" value={issue.priority} label={t[issue.priority as keyof typeof t] || issue.priority} />,
+                          <StatusBadge key="status" kind="status" value={issue.status} label={t[issue.status.replace('-', '') as keyof typeof t] || issue.status.replace('-', ' ')} />,
+                          ...(issue.credibilityLevel && issue.credibilityLevel !== 'high' ? [
+                            <CredibilityBadge key="cred" level={issue.credibilityLevel} score={issue.credibilityScore} signals={issue.credibilitySignals} />,
+                          ] : []),
+                        ]}
+                        metadata={[
+                          { icon: MapPin, label: issue.location },
+                          { icon: User, label: issue.reporterName },
+                          { icon: Calendar, label: new Date(issue.reportedAt).toLocaleDateString() },
+                        ]}
+                        actions={[
+                          {
+                            icon: User,
+                            label: t.assignToMe,
+                            onClick: () => handleAssignToMe(issue),
+                            variant: 'default',
+                            disabled: updateLoading === issue.id,
+                          },
+                          { icon: Navigation, label: t.viewOnMap, onClick: () => openGoogleMaps(issue) },
+                          ...(issue.photoUrl ? [{ icon: Eye, label: t.viewPhoto, onClick: () => window.open(issue.photoUrl, '_blank') }] : []),
+                        ]}
+                      />
                     ))
                   )}
                 </TabsContent>
               </Tabs>
 
               {/* Update Issue Dialog */}
-              <Dialog open={isUpdateDialogOpen} onOpenChange={setIsUpdateDialogOpen}>
-                <DialogContent className="bg-card border-border">
+              <StatusUpdateDialog
+                open={isUpdateDialogOpen}
+                onOpenChange={setIsUpdateDialogOpen}
+                title={t.updateIssue}
+                description={selectedIssue?.title}
+                statusValue={updateForm.status}
+                onStatusChange={(value) => setUpdateForm(prev => ({ ...prev, status: value }))}
+                statusOptions={[
+                  { value: 'reported', label: t.reported },
+                  { value: 'in-progress', label: t.inProgress },
+                  { value: 'resolved', label: t.resolved },
+                  { value: 'rejected', label: t.rejected },
+                ]}
+                note={{
+                  label: t.technicianNote,
+                  value: updateForm.technicianNote,
+                  onChange: (value) => setUpdateForm(prev => ({ ...prev, technicianNote: value })),
+                  placeholder: t.notePlaceholder,
+                }}
+                eta={{
+                  label: t.estimatedCompletion,
+                  value: updateForm.estimatedCompletion,
+                  onChange: (value) => setUpdateForm(prev => ({ ...prev, estimatedCompletion: value })),
+                }}
+                onSubmit={handleUpdateIssue}
+                submitting={!!updateLoading}
+                submitLabel={updateLoading ? t.saving : t.save}
+                cancelLabel={t.cancel}
+              />
+
+              {/* Request Parts Dialog */}
+              <Dialog open={partsDialogOpen} onOpenChange={setPartsDialogOpen}>
+                <DialogContent>
                   <DialogHeader>
-                    <DialogTitle className="text-foreground">{t.updateIssue}</DialogTitle>
-                    <DialogDescription className="text-muted-foreground">
-                      {selectedIssue?.title}
+                    <DialogTitle>{t.requestPartsTitle}</DialogTitle>
+                    <DialogDescription>
+                      {partsTargetIssue?.title}
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="status" className="text-foreground">{t.status}</Label>
-                      <Select
-                        value={updateForm.status}
-                        onValueChange={(value) => setUpdateForm(prev => ({ ...prev, status: value }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-card shadow-lg z-50 rounded-lg">
-                          <SelectItem value="reported">{t.reported}</SelectItem>
-                          <SelectItem value="in-progress">{t.inProgress}</SelectItem>
-                          <SelectItem value="resolved">{t.resolved}</SelectItem>
-                          <SelectItem value="rejected">{t.rejected}</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="technician-note" className="text-foreground">{t.technicianNote}</Label>
-                      <Textarea
-                        id="technician-note"
-                        placeholder={t.notePlaceholder}
-                        value={updateForm.technicianNote}
-                        onChange={(e) => setUpdateForm(prev => ({ ...prev, technicianNote: e.target.value }))}
-                        rows={4}
-                        className="bg-background border-border text-foreground"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="estimated-completion" className="text-foreground">{t.estimatedCompletion}</Label>
-                      <Input
-                        id="estimated-completion"
-                        type="date"
-                        value={updateForm.estimatedCompletion}
-                        onChange={(e) => setUpdateForm(prev => ({ ...prev, estimatedCompletion: e.target.value }))}
-                        className="bg-background border-border text-foreground"
-                      />
-                    </div>
+                    <p className="text-sm text-muted-foreground">{t.requestPartsDesc}</p>
+                    {inventoryItems.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">{t.noInventoryItems}</p>
+                    ) : (
+                      <>
+                        <div className="space-y-2">
+                          <Label>{t.selectPart}</Label>
+                          <Select
+                            value={partsForm.itemId}
+                            onValueChange={(value) => setPartsForm(prev => ({ ...prev, itemId: value }))}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder={t.selectPartPlaceholder} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {inventoryItems.map((item) => (
+                                <SelectItem key={item.id} value={item.id}>
+                                  {item.name} ({item.quantityOnHand} {item.unit} {t.availableQty})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="parts-quantity">{t.quantity}</Label>
+                          <Input
+                            id="parts-quantity"
+                            type="number"
+                            min="1"
+                            value={partsForm.quantity}
+                            onChange={(e) => setPartsForm(prev => ({ ...prev, quantity: e.target.value }))}
+                          />
+                        </div>
+                      </>
+                    )}
                   </div>
                   <DialogFooter>
                     <Button
                       variant="outline"
-                      onClick={() => setIsUpdateDialogOpen(false)}
-                      disabled={!!updateLoading}
+                      onClick={() => setPartsDialogOpen(false)}
+                      disabled={requestingParts}
                     >
                       {t.cancel}
                     </Button>
                     <Button
-                      onClick={handleUpdateIssue}
-                      disabled={!!updateLoading}
+                      onClick={handleRequestParts}
+                      disabled={requestingParts || inventoryItems.length === 0 || !partsForm.itemId}
                     >
-                      {updateLoading ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          {t.saving}
-                        </>
+                      {requestingParts ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
-                        <>
-                          <Save className="h-4 w-4 mr-2" />
-                          {t.save}
-                        </>
+                        <Package className="h-4 w-4" />
                       )}
+                      {requestingParts ? t.requesting : t.requestSubmit}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
-            </div>
-          )}
-        </div>
       </div>
-    </>
   )
 }

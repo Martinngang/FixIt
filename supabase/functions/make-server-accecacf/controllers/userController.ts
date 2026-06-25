@@ -1,7 +1,7 @@
 import type { AppContext } from '../utils/types.ts'
 import * as userModel from '../models/userModel.ts'
-import { getAuthenticatedUser } from '../utils/auth.ts'
-import { handleError, ForbiddenError, ValidationError } from '../utils/errors.ts'
+import { getAuthenticatedUser, getOrganizationId } from '../utils/auth.ts'
+import { handleError, ForbiddenError, NotFoundError, ValidationError } from '../utils/errors.ts'
 
 export async function getUsers(c: AppContext) {
   try {
@@ -9,7 +9,7 @@ export async function getUsers(c: AppContext) {
     const userRole = userModel.getEffectiveUserRole(user, c.req)
     if (userRole !== 'admin') throw new ForbiddenError('Admin access required')
 
-    const users = await userModel.listUsers()
+    const users = await userModel.listUsers(getOrganizationId(user))
     return c.json({ users })
   } catch (error) {
     return handleError(c, error, 'Failed to fetch users')
@@ -32,7 +32,7 @@ export async function createUser(c: AppContext) {
       throw new ValidationError('Invalid role. Must be one of: citizen, technician, admin')
     }
 
-    const newUser = await userModel.createUser({ email, password, name, role, categories })
+    const newUser = await userModel.createUser({ email, password, name, role, categories, organizationId: getOrganizationId(adminUser) })
     return c.json({ success: true, user: newUser })
   } catch (error) {
     return handleError(c, error, 'Failed to create user')
@@ -46,10 +46,16 @@ export async function updateUser(c: AppContext) {
     if (userRole !== 'admin') throw new ForbiddenError('Admin access required')
 
     const userId = c.req.param('id')
+
+    const targetUser = await userModel.getUserById(userId)
+    if (!targetUser || (targetUser.user_metadata?.organizationId ?? null) !== getOrganizationId(adminUser)) {
+      throw new NotFoundError('User not found')
+    }
+
     const { role, name, email, categories } = await c.req.json()
 
-    const updateData: { email?: string; user_metadata?: any } = {}
-    updateData.user_metadata = {}
+    const updateData: { email?: string; user_metadata?: Record<string, any> } = {}
+    updateData.user_metadata = { ...targetUser.user_metadata }
 
     if (role) {
       if (!['citizen', 'technician', 'admin'].includes(role)) {
@@ -84,6 +90,11 @@ export async function deleteUser(c: AppContext) {
     if (userRole !== 'admin') throw new ForbiddenError('Admin access required')
 
     const userId = c.req.param('id')
+
+    const targetUser = await userModel.getUserById(userId)
+    if (!targetUser || (targetUser.user_metadata?.organizationId ?? null) !== getOrganizationId(adminUser)) {
+      throw new NotFoundError('User not found')
+    }
 
     await userModel.deleteUser(userId)
     return c.json({ success: true })

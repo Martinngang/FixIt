@@ -5,18 +5,21 @@ import { Button } from "./ui/button.tsx"
 import { Alert, AlertDescription } from "./ui/alert.tsx"
 import { Skeleton } from "./ui/skeleton.tsx"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs.tsx"
-import { 
-  Bell, 
-  CheckCircle, 
-  Clock, 
-  AlertCircle, 
-  User, 
+import { EmptyState } from "./ui/empty-state.tsx"
+import { StatusBadge } from "./ui/status-badge.tsx"
+import {
+  Bell,
+  CheckCircle,
+  Clock,
+  AlertCircle,
+  User,
   Wrench,
   Settings,
   Calendar,
   Eye,
   EyeOff,
-  Trash2
+  Trash2,
+  RefreshCw
 } from 'lucide-react'
 import { projectId } from "../utils/supabase/info.ts"
 
@@ -37,29 +40,16 @@ const getNotificationIcon = (type: string) => {
   switch (type) {
     case 'issue_assigned':
     case 'task_assigned':
-      return <Wrench className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+      return <Wrench className="h-5 w-5 text-info" />
     case 'issue_completed':
     case 'task_completed':
-      return <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+      return <CheckCircle className="h-5 w-5 text-success" />
     case 'issue_updated':
-      return <AlertCircle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+      return <AlertCircle className="h-5 w-5 text-warning" />
     case 'system':
-      return <Settings className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+      return <Settings className="h-5 w-5 text-muted-foreground" />
     default:
-      return <Bell className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-  }
-}
-
-const getPriorityColor = (priority: string) => {
-  switch (priority) {
-    case 'high':
-      return 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200'
-    case 'medium':
-      return 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200'
-    case 'low':
-      return 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200'
-    default:
-      return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
+      return <Bell className="h-5 w-5 text-info" />
   }
 }
 
@@ -91,6 +81,7 @@ const translations = {
     weeksAgo: 'weeks ago',
     loading: 'Loading notifications...',
     error: 'Failed to load notifications',
+    refresh: 'Retry',
     issueAssigned: 'Issue Assigned',
     taskAssigned: 'Task Assigned',
     issueCompleted: 'Issue Completed',
@@ -125,6 +116,7 @@ const translations = {
     weeksAgo: 'semaines',
     loading: 'Chargement des notifications...',
     error: 'Échec du chargement des notifications',
+    refresh: 'Réessayer',
     issueAssigned: 'Problème assigné',
     taskAssigned: 'Tâche assignée',
     issueCompleted: 'Problème terminé',
@@ -297,206 +289,186 @@ export function NotificationsPanel({
   const filteredNotifications = filterNotifications(notifications, activeTab)
   const unreadCount = notifications.filter(n => !n.read).length
 
-  return (
-    <>
-      <div className="min-h-screen bg-background p-4">
-        <div className="max-w-4xl mx-auto">
-          {loading ? (
-            <div className="space-y-4">
-              <Card className="bg-card border-border shadow-lg">
-                <CardHeader>
-                  <Skeleton className="h-6 w-48" />
-                  <Skeleton className="h-4 w-32" />
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {[...Array(5)].map((_, i) => (
-                      <div key={i} className="flex items-start space-x-4 p-4 border border-border rounded-lg">
-                        <Skeleton className="h-10 w-10 rounded-full" />
-                        <div className="flex-1 space-y-2">
-                          <Skeleton className="h-4 w-48" />
-                          <Skeleton className="h-3 w-32" />
-                          <Skeleton className="h-3 w-24" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          ) : error ? (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          ) : (
-            <div className="space-y-6">
-              <Card className="bg-card border-border shadow-lg">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="flex items-center space-x-2 text-foreground">
-                        <Bell className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                        <span>{t.notificationCenter}</span>
-                        {unreadCount > 0 && (
-                          <Badge variant="destructive" className="ml-2">
-                            {unreadCount}
-                          </Badge>
-                        )}
-                      </CardTitle>
-                      <CardDescription className="text-muted-foreground">
-                        Stay updated with the latest activities and updates
-                      </CardDescription>
-                    </div>
-                    {notifications.length > 0 && (
-                      <div className="flex space-x-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={markAllAsRead}
-                          disabled={unreadCount === 0}
-                          className="bg-background border-border text-foreground hover:bg-muted"
-                        >
-                          {t.markAllAsRead}
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-                    <TabsList>
-                      <TabsTrigger value="all" className="flex items-center space-x-2">
-                        <span>{t.allNotifications}</span>
-                        <Badge variant="outline">{notifications.length}</Badge>
-                      </TabsTrigger>
-                      <TabsTrigger value="unread" className="flex items-center space-x-2">
-                        <span>{t.unreadNotifications}</span>
-                        {unreadCount > 0 && <Badge variant="destructive">{unreadCount}</Badge>}
-                      </TabsTrigger>
-                      {(userRole === 'technician' || userRole === 'admin') && (
-                        <TabsTrigger value="tasks" className="flex items-center space-x-2">
-                          <Wrench className="h-4 w-4" />
-                          <span>{t.taskNotifications}</span>
-                        </TabsTrigger>
-                      )}
-                      <TabsTrigger value="system" className="flex items-center space-x-2">
-                        <Settings className="h-4 w-4" />
-                        <span>{t.systemNotifications}</span>
-                      </TabsTrigger>
-                    </TabsList>
+  if (loading) {
+    return (
+      <div className="space-y-4 animate-fade-in">
+        {[...Array(3)].map((_, i) => (
+          <Card key={i}>
+            <CardHeader><Skeleton className="h-6 w-48" /><Skeleton className="h-4 w-32" /></CardHeader>
+            <CardContent><Skeleton className="h-16 w-full" /></CardContent>
+          </Card>
+        ))}
+      </div>
+    )
+  }
 
-                    <TabsContent value={activeTab}>
-                      {filteredNotifications.length === 0 ? (
-                        <div className="text-center py-8">
-                          <Bell className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                          <p className="text-muted-foreground">
-                            {activeTab === 'unread' ? t.noUnreadNotifications : t.noNotifications}
-                          </p>
-                          <p className="text-sm text-muted-foreground mt-2">
-                            {activeTab === 'unread' ? t.noUnreadNotificationsDesc : t.noNotificationsDesc}
-                          </p>
+  if (error) {
+    return (
+      <Alert variant="destructive" className="animate-fade-in">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <span>{error}</span>
+          <Button variant="outline" size="sm" onClick={fetchNotifications}>
+            <RefreshCw className="h-4 w-4" />
+            {t.refresh}
+          </Button>
+        </AlertDescription>
+      </Alert>
+    )
+  }
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Bell className="h-5 w-5 text-info" />
+                <span>{t.notificationCenter}</span>
+                {unreadCount > 0 && (
+                  <Badge variant="destructive">{unreadCount}</Badge>
+                )}
+              </CardTitle>
+              <CardDescription>
+                Stay updated with the latest activities and updates
+              </CardDescription>
+            </div>
+            {notifications.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={markAllAsRead}
+                disabled={unreadCount === 0}
+                className="self-start sm:self-auto"
+              >
+                {t.markAllAsRead}
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+            <TabsList className="w-full sm:w-auto overflow-x-auto justify-start">
+              <TabsTrigger value="all" className="gap-1.5 whitespace-nowrap">
+                <span>{t.allNotifications}</span>
+                <Badge variant="outline">{notifications.length}</Badge>
+              </TabsTrigger>
+              <TabsTrigger value="unread" className="gap-1.5 whitespace-nowrap">
+                <span>{t.unreadNotifications}</span>
+                {unreadCount > 0 && <Badge variant="destructive">{unreadCount}</Badge>}
+              </TabsTrigger>
+              {(userRole === 'technician' || userRole === 'admin') && (
+                <TabsTrigger value="tasks" className="gap-1.5 whitespace-nowrap">
+                  <Wrench className="h-4 w-4" />
+                  <span>{t.taskNotifications}</span>
+                </TabsTrigger>
+              )}
+              <TabsTrigger value="system" className="gap-1.5 whitespace-nowrap">
+                <Settings className="h-4 w-4" />
+                <span>{t.systemNotifications}</span>
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value={activeTab}>
+              {filteredNotifications.length === 0 ? (
+                <EmptyState
+                  icon={Bell}
+                  title={activeTab === 'unread' ? t.noUnreadNotifications : t.noNotifications}
+                  description={activeTab === 'unread' ? t.noUnreadNotificationsDesc : t.noNotificationsDesc}
+                />
+              ) : (
+                <div className="space-y-3">
+                  {filteredNotifications.map((notification) => (
+                    <div
+                      key={notification.id}
+                      className={`p-4 rounded-xl border transition-colors ${
+                        notification.read ? 'border-border' : 'bg-info/10 border-info/30'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 mt-1">
+                          {getNotificationIcon(notification.type)}
                         </div>
-                      ) : (
-                        <div className="space-y-3">
-                          {filteredNotifications.map((notification) => (
-                            <div
-                              key={notification.id}
-                              className={`p-4 rounded-lg border ${
-                                notification.read
-                                  ? 'bg-background border-border'
-                                  : 'bg-blue-50 dark:bg-blue-950/50 border-blue-200 dark:border-blue-800'
-                              } transition-colors`}
-                            >
-                              <div className="flex items-start space-x-3">
-                                <div className="flex-shrink-0 mt-1">
-                                  {getNotificationIcon(notification.type)}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex flex-wrap items-center gap-2 mb-1">
+                                <h4 className="text-sm font-medium text-foreground">
+                                  {notification.title}
+                                </h4>
+                                <StatusBadge kind="priority" value={notification.priority} label={notification.priority} />
+                                {!notification.read && (
+                                  <div className="w-2 h-2 bg-info rounded-full"></div>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground mb-2">
+                                {notification.message}
+                              </p>
+                              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                                <div className="flex items-center gap-1">
+                                  <Calendar className="h-3 w-3" />
+                                  <span>{getTimeAgo(notification.createdAt)}</span>
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-start justify-between">
-                                    <div className="flex-1">
-                                      <div className="flex items-center space-x-2 mb-1">
-                                        <h4 className="text-sm font-medium text-foreground">
-                                          {notification.title}
-                                        </h4>
-                                        <Badge className={getPriorityColor(notification.priority)}>
-                                          {notification.priority}
-                                        </Badge>
-                                        {!notification.read && (
-                                          <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                                        )}
-                                      </div>
-                                      <p className="text-sm text-muted-foreground mb-2">
-                                        {notification.message}
-                                      </p>
-                                      <div className="flex items-center space-x-4 text-xs text-muted-foreground">
-                                        <div className="flex items-center space-x-1">
-                                          <Calendar className="h-3 w-3" />
-                                          <span>{getTimeAgo(notification.createdAt)}</span>
-                                        </div>
-                                        {notification.senderName && (
-                                          <div className="flex items-center space-x-1">
-                                            <User className="h-3 w-3" />
-                                            <span>{t.from} {notification.senderName}</span>
-                                          </div>
-                                        )}
-                                        {notification.relatedIssueId && (
-                                          <div className="flex items-center space-x-1">
-                                            <AlertCircle className="h-3 w-3" />
-                                            <span>{t.relatedTo} #{notification.relatedIssueId.slice(-6)}</span>
-                                          </div>
-                                        )}
-                                      </div>
-                                    </div>
-                                    <div className="flex items-center space-x-1 ml-4">
-                                      {notification.relatedIssueId && (
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-8 w-8 p-0 bg-background border-border text-foreground hover:bg-muted"
-                                          title={t.viewIssue}
-                                        >
-                                          <Eye className="h-4 w-4" />
-                                        </Button>
-                                      )}
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 w-8 p-0 bg-background border-border text-foreground hover:bg-muted"
-                                        onClick={() => notification.read ? markAsUnread(notification.id) : markAsRead(notification.id)}
-                                        title={notification.read ? t.markAsUnread : t.markAsRead}
-                                      >
-                                        {notification.read ? (
-                                          <EyeOff className="h-4 w-4" />
-                                        ) : (
-                                          <Eye className="h-4 w-4" />
-                                        )}
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                                        onClick={() => deleteNotification(notification.id)}
-                                        title={t.deleteNotification}
-                                      >
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
-                                    </div>
+                                {notification.senderName && (
+                                  <div className="flex items-center gap-1">
+                                    <User className="h-3 w-3" />
+                                    <span>{t.from} {notification.senderName}</span>
                                   </div>
-                                </div>
+                                )}
+                                {notification.relatedIssueId && (
+                                  <div className="flex items-center gap-1">
+                                    <AlertCircle className="h-3 w-3" />
+                                    <span>{t.relatedTo} #{notification.relatedIssueId.slice(-6)}</span>
+                                  </div>
+                                )}
                               </div>
                             </div>
-                          ))}
+                            <div className="flex items-center gap-1 shrink-0">
+                              {notification.relatedIssueId && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  title={t.viewIssue}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                onClick={() => notification.read ? markAsUnread(notification.id) : markAsRead(notification.id)}
+                                title={notification.read ? t.markAsUnread : t.markAsRead}
+                              >
+                                {notification.read ? (
+                                  <EyeOff className="h-4 w-4" />
+                                ) : (
+                                  <Eye className="h-4 w-4" />
+                                )}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => deleteNotification(notification.id)}
+                                title={t.deleteNotification}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
                         </div>
-                      )}
-                    </TabsContent>
-                  </Tabs>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-        </div>
-      </div>
-    </>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+    </div>
   )
 }

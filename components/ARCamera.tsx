@@ -27,6 +27,12 @@ const translations = {
     enableCompass: 'Enable Compass',
     instructions: 'Point your camera at the issue, then tap the shutter to pin its exact location.',
     nearbyIssuesFound: 'nearby issue(s) shown on screen',
+    moreNearby: 'more nearby',
+    onboardingTitle: 'How AR reporting works',
+    onboardingGps: 'GPS pin shows how precisely your location is known.',
+    onboardingCompass: 'Compass heading lets nearby issues appear in the right direction.',
+    onboardingShutter: 'Tap the white shutter button once GPS has a fix to capture and pin the issue.',
+    gotIt: 'Got it',
   },
   fr: {
     cameraError: 'Impossible d\'accéder à la caméra. Vérifiez les autorisations et réessayez.',
@@ -35,12 +41,21 @@ const translations = {
     enableCompass: 'Activer la boussole',
     instructions: 'Pointez votre caméra vers le problème, puis appuyez sur le déclencheur pour épingler son emplacement exact.',
     nearbyIssuesFound: 'problème(s) à proximité affiché(s) à l\'écran',
+    moreNearby: 'de plus à proximité',
+    onboardingTitle: 'Fonctionnement du signalement AR',
+    onboardingGps: 'Le repère GPS indique la précision de votre position.',
+    onboardingCompass: 'Le cap de la boussole permet d\'afficher les problèmes proches dans la bonne direction.',
+    onboardingShutter: 'Appuyez sur le déclencheur blanc une fois le GPS fixé pour capturer et épingler le problème.',
+    gotIt: 'Compris',
   }
 }
+
+const ONBOARDING_STORAGE_KEY = 'ar-camera-onboarded'
 
 // Horizontal field of view approximation for typical phone rear cameras, in degrees
 const CAMERA_FOV = 60
 const NEARBY_RADIUS_METERS = 2000
+const MAX_VISIBLE_PINS = 5
 
 function toRad(deg: number) {
   return (deg * Math.PI) / 180
@@ -83,6 +98,22 @@ export function ARCamera({ language = 'en', onCapture, onClose }: ARCameraProps)
   const [needsOrientationPermission, setNeedsOrientationPermission] = useState(false)
   const [nearbyIssues, setNearbyIssues] = useState<NearbyIssue[]>([])
   const [capturing, setCapturing] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    try {
+      return !localStorage.getItem(ONBOARDING_STORAGE_KEY)
+    } catch {
+      return false
+    }
+  })
+
+  const dismissOnboarding = () => {
+    setShowOnboarding(false)
+    try {
+      localStorage.setItem(ONBOARDING_STORAGE_KEY, '1')
+    } catch {
+      // ignore storage errors (private browsing, etc.)
+    }
+  }
 
   useEffect(() => {
     let mounted = true
@@ -223,19 +254,19 @@ export function ARCamera({ language = 'en', onCapture, onClose }: ARCameraProps)
         <div className="flex flex-wrap items-center justify-end gap-2 text-white text-sm">
           {coordinates ? (
             <Badge variant="outline" className="text-white border-white/40 bg-black/30">
-              <MapPin className="h-3 w-3 mr-1" />
+              <MapPin className="h-3 w-3" />
               {coordinates.lat.toFixed(5)}, {coordinates.lng.toFixed(5)}
               {accuracy ? ` (±${Math.round(accuracy)}m)` : ''}
             </Badge>
           ) : (
             <Badge variant="outline" className="text-white border-white/40 bg-black/30">
-              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+              <Loader2 className="h-3 w-3 animate-spin" />
               {t.gettingLocation}
             </Badge>
           )}
           {heading !== null && (
             <Badge variant="outline" className="text-white border-white/40 bg-black/30">
-              <Compass className="h-3 w-3 mr-1" />
+              <Compass className="h-3 w-3" />
               {Math.round(heading)}°
             </Badge>
           )}
@@ -243,7 +274,7 @@ export function ARCamera({ language = 'en', onCapture, onClose }: ARCameraProps)
       </div>
 
       {error && (
-        <div className="absolute top-20 left-4 right-4 z-20 bg-destructive/90 text-white p-3 rounded-lg flex items-center space-x-2">
+        <div className="absolute top-20 left-4 right-4 z-20 bg-destructive/90 text-white p-3 rounded-xl flex items-center gap-2">
           <AlertCircle className="h-5 w-5 shrink-0" />
           <span className="text-sm">{error}</span>
         </div>
@@ -251,10 +282,35 @@ export function ARCamera({ language = 'en', onCapture, onClose }: ARCameraProps)
 
       {needsOrientationPermission && (
         <div className="absolute top-20 left-4 right-4 z-20 flex justify-center">
-          <Button onClick={requestOrientationPermission} className="bg-blue-600 text-white hover:bg-blue-700">
-            <Compass className="h-4 w-4 mr-2" />
+          <Button onClick={requestOrientationPermission}>
+            <Compass className="h-4 w-4" />
             {t.enableCompass}
           </Button>
+        </div>
+      )}
+
+      {showOnboarding && (
+        <div className="absolute inset-0 z-30 bg-black/70 flex items-center justify-center p-6">
+          <div className="bg-card text-card-foreground rounded-2xl p-5 max-w-sm w-full space-y-4 shadow-xl">
+            <h3 className="font-display font-semibold text-lg">{t.onboardingTitle}</h3>
+            <div className="space-y-3 text-sm text-muted-foreground">
+              <div className="flex items-start gap-2.5">
+                <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
+                <span>{t.onboardingGps}</span>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <Compass className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
+                <span>{t.onboardingCompass}</span>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <CameraIcon className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
+                <span>{t.onboardingShutter}</span>
+              </div>
+            </div>
+            <Button className="w-full" onClick={dismissOnboarding}>
+              {t.gotIt}
+            </Button>
+          </div>
         </div>
       )}
 
@@ -263,7 +319,7 @@ export function ARCamera({ language = 'en', onCapture, onClose }: ARCameraProps)
           <Crosshair className="h-10 w-10 text-white/80" />
         </div>
 
-        {coordinates && heading !== null && nearbyIssues.map((issue) => {
+        {coordinates && heading !== null && nearbyIssues.slice(0, MAX_VISIBLE_PINS).map((issue) => {
           const bearing = getBearing(coordinates.lat, coordinates.lng, issue.coordinates.lat, issue.coordinates.lng)
           const relative = (((bearing - heading + 540) % 360) - 180)
           if (Math.abs(relative) > CAMERA_FOV / 2) return null
@@ -275,10 +331,10 @@ export function ARCamera({ language = 'en', onCapture, onClose }: ARCameraProps)
               className="absolute flex flex-col items-center"
               style={{ left: `${leftPercent}%`, top: '35%', transform: `translate(-50%, -50%) scale(${scale})` }}
             >
-              <div className="bg-blue-600/90 text-white rounded-full p-2 shadow-lg border-2 border-white">
+              <div className="bg-primary/90 text-white rounded-full p-2 shadow-lg border-2 border-white">
                 <MapPin className="h-4 w-4" />
               </div>
-              <div className="mt-1 bg-black/70 text-white text-xs rounded px-2 py-1 max-w-[140px] text-center">
+              <div className="mt-1 bg-black/70 text-white text-xs rounded-lg px-2 py-1 max-w-[140px] text-center">
                 <div className="truncate font-medium">{issue.title}</div>
                 <div className="text-white/70">{formatDistance(issue.distance)}</div>
               </div>
@@ -286,6 +342,14 @@ export function ARCamera({ language = 'en', onCapture, onClose }: ARCameraProps)
           )
         })}
       </div>
+
+      {nearbyIssues.length > MAX_VISIBLE_PINS && (
+        <div className="absolute top-20 right-4 z-20">
+          <Badge variant="outline" className="text-white border-white/40 bg-black/40">
+            +{nearbyIssues.length - MAX_VISIBLE_PINS} {t.moreNearby}
+          </Badge>
+        </div>
+      )}
 
       <div className="relative z-10 mt-auto p-6 bg-gradient-to-t from-black/70 to-transparent">
         <p className="text-white text-sm text-center mb-4">
@@ -297,9 +361,9 @@ export function ARCamera({ language = 'en', onCapture, onClose }: ARCameraProps)
           <Button
             onClick={handleCapture}
             disabled={!coordinates || capturing}
-            className="h-16 w-16 rounded-full bg-white hover:bg-white/90 p-0 border-4 border-blue-600"
+            className="h-16 w-16 rounded-full bg-white hover:bg-white/90 p-0 border-4 border-primary"
           >
-            {capturing ? <Loader2 className="h-6 w-6 animate-spin text-blue-600" /> : <CameraIcon className="h-6 w-6 text-blue-600" />}
+            {capturing ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : <CameraIcon className="h-6 w-6 text-primary" />}
           </Button>
         </div>
       </div>

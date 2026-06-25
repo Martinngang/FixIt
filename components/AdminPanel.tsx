@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "./ui/card";
 import { Badge } from "./ui/badge";
+import { CredibilityBadge } from "./ui/credibility-badge";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Checkbox } from "./ui/checkbox";
@@ -23,6 +24,8 @@ import { Textarea } from "./ui/textarea";
 import { Label } from "./ui/label";
 import { Alert, AlertDescription } from "./ui/alert";
 import { Skeleton } from "./ui/skeleton";
+import { EmptyState } from "./ui/empty-state";
+import { StatusBadge } from "./ui/status-badge";
 import {
   Tabs,
   TabsContent,
@@ -57,10 +60,24 @@ import {
   Eye,
   ThumbsUp,
   AlertTriangle,
+  MessageSquare,
   Flame,
+  Wifi,
+  Coffee,
+  Moon,
+  Navigation,
+  Sparkles,
+  Loader2,
+  Building2,
+  RefreshCw,
+  Plus,
+  X,
+  Store,
+  DollarSign,
+  CreditCard,
 } from "lucide-react";
 import { projectId, publicAnonKey } from "../utils/supabase/info";
-import { IssueComments } from "./IssueComments";
+import { Comments } from "./Comments";
 // import './index.css';
 
 const issueCategories = [
@@ -166,6 +183,7 @@ const translations = {
     sortRecent: "Most Recent",
     sortUpvotes: "Most Upvoted",
     sortFlagged: "Needs Attention",
+    sortCredibility: "Lowest Credibility",
     needsAttention: "Needs Attention",
     hotspots: "Hotspots",
     hotspotsSubtitle: "Recurring problem locations that may need proactive maintenance",
@@ -177,6 +195,99 @@ const translations = {
     recentIssuesLabel: "Recent (90 days)",
     avgResolution: "Avg. resolution time",
     days: "days",
+    suggestedTechnicians: "Suggested Technicians",
+    suggestedTechniciansDesc: "Ranked by skill match, availability, distance, and current workload.",
+    loadingSuggestions: "Finding the best technicians...",
+    noSuggestions: "No technicians found",
+    matchScore: "Match",
+    skillMatch: "Skill match",
+    available: "Available",
+    busy: "Busy",
+    offDuty: "Off duty",
+    away: "away",
+    activeTasks: "active tasks",
+    distanceUnknown: "Distance unknown",
+    // Organization
+    organization: "Organization",
+    organizationSubtitle: "Configure your organization's issue categories, location label, and join code",
+    orgCategories: "Issue Categories",
+    orgCategoriesDesc: "These categories appear when your members report an issue",
+    newCategoryPlaceholder: "New category name",
+    addCategory: "Add",
+    removeCategoryAria: "Remove category",
+    orgLocationLabel: "Location Field Label",
+    orgLocationLabelDesc: "Shown to members instead of an address field, e.g. \"Building / Room / Asset ID\"",
+    orgLocationLabelPlaceholder: "Building / Room / Asset ID",
+    joinCode: "Join Code",
+    regenerateCode: "Regenerate",
+    joinCodeHint: "Share this code with your team so they can join your organization.",
+    billingTitle: "Billing & Plan",
+    billingDesc: "Manage your organization's subscription and member seats.",
+    planFree: "Free",
+    planPro: "Pro",
+    planEnterprise: "Enterprise",
+    seatsUsedLabel: "{used} / {limit} seats used",
+    seatsUsedUnlimited: "{used} seats used (unlimited)",
+    subscriptionStatusActive: "Active",
+    subscriptionStatusPastDue: "Payment past due",
+    subscriptionStatusCanceled: "Canceled",
+    upgradeToPro: "Upgrade to Pro",
+    upgradeToEnterprise: "Upgrade to Enterprise",
+    upgrading: "Redirecting...",
+    manageBilling: "Manage Billing",
+    openingPortal: "Opening...",
+    billingCheckoutError: "Failed to start checkout",
+    billingPortalError: "Failed to open billing portal",
+    billingUpgradeSuccessToast: "Subscription updated! Refreshing your plan...",
+    billingUpgradeCancelledToast: "Upgrade cancelled.",
+    saveOrganization: "Save Changes",
+    orgUpdateSuccess: "Organization updated successfully",
+    orgUpdateError: "Failed to update organization",
+    orgRegenerateError: "Failed to regenerate join code",
+    orgFetchError: "Failed to load organization",
+    atLeastOneCategory: "At least one category is required",
+    // Marketplace (Phase 11)
+    marketplaceLabel: "Marketplace",
+    postToMarketplace: "Post to Marketplace",
+    postToMarketplaceDesc: "Make this issue available for independent contractors to claim. Set a fixed budget for the job.",
+    marketplaceBudgetLabel: "Budget (USD)",
+    marketplaceBudgetPlaceholder: "e.g. 150",
+    posting: "Posting...",
+    post: "Post",
+    cancelPosting: "Cancel Posting",
+    payContractor: "Pay Contractor",
+    paying: "Processing...",
+    marketplaceStatusOpen: "Open",
+    marketplaceStatusClaimed: "Claimed",
+    marketplaceStatusCompleted: "Awaiting Payment",
+    marketplaceStatusPaid: "Paid",
+    postSuccess: "Issue posted to the marketplace",
+    postError: "Failed to post issue to marketplace",
+    unpostSuccess: "Marketplace posting cancelled",
+    unpostError: "Failed to cancel marketplace posting",
+    viaSms: "Via SMS",
+    syncPayment: "Refresh Payment Status",
+    syncingPayment: "Checking...",
+    syncPaymentError: "Failed to refresh payment status",
+    paymentSuccessToast: "Payment completed! Syncing status...",
+    paymentCancelledToast: "Payment was cancelled. You can try again when ready.",
+    payError: "Failed to start payment",
+    invalidBudget: "Enter a valid budget greater than 0",
+    contractorVetting: "Contractor Vetting",
+    contractorVettingSubtitle: "Review and approve independent contractor applications",
+    noContractorApplications: "No contractor applications",
+    noContractorApplicationsDesc: "Applications from independent contractors will appear here",
+    approve: "Approve",
+    reject: "Reject",
+    contractorApprovedSuccess: "Contractor approved",
+    contractorRejectedSuccess: "Contractor rejected",
+    contractorStatusError: "Failed to update contractor status",
+    stripeConnected: "Stripe connected",
+    stripeNotConnected: "Stripe not connected",
+    applicationPending: "Pending",
+    applicationApproved: "Approved",
+    applicationRejected: "Rejected",
+    refresh: "Refresh",
   },
   fr: {
     adminPanel: "Panneau admin",
@@ -272,6 +383,7 @@ const translations = {
     sortRecent: "Plus récent",
     sortUpvotes: "Plus voté",
     sortFlagged: "Nécessite une attention",
+    sortCredibility: "Crédibilité la plus faible",
     needsAttention: "Nécessite une attention",
     hotspots: "Points chauds",
     hotspotsSubtitle: "Emplacements à problèmes récurrents pouvant nécessiter une maintenance proactive",
@@ -283,8 +395,115 @@ const translations = {
     recentIssuesLabel: "Récents (90 jours)",
     avgResolution: "Temps de résolution moyen",
     days: "jours",
+    suggestedTechnicians: "Techniciens suggérés",
+    suggestedTechniciansDesc: "Classés par compétences, disponibilité, distance et charge de travail actuelle.",
+    loadingSuggestions: "Recherche des meilleurs techniciens...",
+    noSuggestions: "Aucun technicien trouvé",
+    matchScore: "Correspondance",
+    skillMatch: "Compétence",
+    available: "Disponible",
+    busy: "Occupé",
+    offDuty: "Hors service",
+    away: "de distance",
+    activeTasks: "tâches actives",
+    distanceUnknown: "Distance inconnue",
+    // Organization
+    organization: "Organisation",
+    organizationSubtitle: "Configurez les catégories de problèmes, le libellé de localisation et le code d'invitation de votre organisation",
+    orgCategories: "Catégories de problèmes",
+    orgCategoriesDesc: "Ces catégories apparaissent lorsque vos membres signalent un problème",
+    newCategoryPlaceholder: "Nom de la nouvelle catégorie",
+    addCategory: "Ajouter",
+    removeCategoryAria: "Supprimer la catégorie",
+    orgLocationLabel: "Libellé du champ de localisation",
+    orgLocationLabelDesc: "Affiché aux membres à la place d'un champ d'adresse, par ex. \"Bâtiment / Salle / ID de l'actif\"",
+    orgLocationLabelPlaceholder: "Bâtiment / Salle / ID de l'actif",
+    joinCode: "Code d'invitation",
+    regenerateCode: "Régénérer",
+    joinCodeHint: "Partagez ce code avec votre équipe pour qu'elle rejoigne votre organisation.",
+    billingTitle: "Facturation et forfait",
+    billingDesc: "Gérez l'abonnement de votre organisation et les places membres.",
+    planFree: "Gratuit",
+    planPro: "Pro",
+    planEnterprise: "Entreprise",
+    seatsUsedLabel: "{used} / {limit} places utilisées",
+    seatsUsedUnlimited: "{used} places utilisées (illimité)",
+    subscriptionStatusActive: "Actif",
+    subscriptionStatusPastDue: "Paiement en retard",
+    subscriptionStatusCanceled: "Annulé",
+    upgradeToPro: "Passer à Pro",
+    upgradeToEnterprise: "Passer à Entreprise",
+    upgrading: "Redirection...",
+    manageBilling: "Gérer la facturation",
+    openingPortal: "Ouverture...",
+    billingCheckoutError: "Échec du démarrage du paiement",
+    billingPortalError: "Échec de l'ouverture du portail de facturation",
+    billingUpgradeSuccessToast: "Abonnement mis à jour! Actualisation de votre forfait...",
+    billingUpgradeCancelledToast: "Mise à niveau annulée.",
+    saveOrganization: "Enregistrer les modifications",
+    orgUpdateSuccess: "Organisation mise à jour avec succès",
+    orgUpdateError: "Échec de la mise à jour de l'organisation",
+    orgRegenerateError: "Échec de la régénération du code",
+    orgFetchError: "Échec du chargement de l'organisation",
+    atLeastOneCategory: "Au moins une catégorie est requise",
+    // Marketplace (Phase 11)
+    marketplaceLabel: "Marché",
+    postToMarketplace: "Publier sur le marché",
+    postToMarketplaceDesc: "Rendre ce problème disponible pour que des entrepreneurs indépendants le réclament. Définissez un budget fixe pour ce travail.",
+    marketplaceBudgetLabel: "Budget (USD)",
+    marketplaceBudgetPlaceholder: "ex. 150",
+    posting: "Publication...",
+    post: "Publier",
+    cancelPosting: "Annuler la publication",
+    payContractor: "Payer l'entrepreneur",
+    paying: "Traitement...",
+    marketplaceStatusOpen: "Ouvert",
+    marketplaceStatusClaimed: "Réclamé",
+    marketplaceStatusCompleted: "En attente de paiement",
+    marketplaceStatusPaid: "Payé",
+    postSuccess: "Problème publié sur le marché",
+    postError: "Échec de la publication sur le marché",
+    unpostSuccess: "Publication annulée",
+    unpostError: "Échec de l'annulation de la publication",
+    viaSms: "Par SMS",
+    syncPayment: "Actualiser le statut du paiement",
+    syncingPayment: "Vérification...",
+    syncPaymentError: "Échec de l'actualisation du statut du paiement",
+    paymentSuccessToast: "Paiement terminé! Synchronisation du statut...",
+    paymentCancelledToast: "Le paiement a été annulé. Vous pouvez réessayer quand vous êtes prêt.",
+    payError: "Échec du démarrage du paiement",
+    invalidBudget: "Entrez un budget valide supérieur à 0",
+    contractorVetting: "Vérification des entrepreneurs",
+    contractorVettingSubtitle: "Examiner et approuver les candidatures d'entrepreneurs indépendants",
+    noContractorApplications: "Aucune candidature d'entrepreneur",
+    noContractorApplicationsDesc: "Les candidatures des entrepreneurs indépendants apparaîtront ici",
+    approve: "Approuver",
+    reject: "Rejeter",
+    contractorApprovedSuccess: "Entrepreneur approuvé",
+    contractorRejectedSuccess: "Entrepreneur rejeté",
+    contractorStatusError: "Échec de la mise à jour du statut de l'entrepreneur",
+    stripeConnected: "Stripe connecté",
+    stripeNotConnected: "Stripe non connecté",
+    applicationPending: "En attente",
+    applicationApproved: "Approuvé",
+    applicationRejected: "Rejeté",
+    refresh: "Actualiser",
   },
 };
+
+interface MarketplaceInfo {
+  status: "open" | "claimed" | "completed" | "paid";
+  budget: number;
+  commissionRate: number;
+  postedBy: string;
+  postedAt: string;
+  contractorId?: string;
+  contractorName?: string;
+  claimedAt?: string;
+  completedAt?: string;
+  transactionId?: string;
+  paidAt?: string;
+}
 
 interface Issue {
   id: string;
@@ -307,6 +526,41 @@ interface Issue {
   upvotedBy?: string[];
   sentiment?: string;
   flagged?: boolean;
+  credibilityScore?: number;
+  credibilityLevel?: "high" | "medium" | "low";
+  credibilitySignals?: {
+    hasPhoto: boolean;
+    hasCoordinates: boolean;
+    descriptionLength: number;
+    corroboratingReports: number;
+    upvotes: number;
+    reporterRejectionRate: number | null;
+  };
+  marketplace?: MarketplaceInfo;
+  reportedVia?: "app" | "sms";
+  reporterPhone?: string;
+}
+
+interface ContractorApplication {
+  id: string;
+  email: string;
+  name: string;
+  categories: string[];
+  marketplaceStatus: "pending" | "approved" | "rejected";
+  stripeOnboardingComplete: boolean;
+}
+
+interface TechnicianSuggestion {
+  technicianId: string;
+  name: string;
+  email: string;
+  categories: string[];
+  availability: "available" | "busy" | "off_duty";
+  location: { lat: number; lng: number } | null;
+  distanceKm: number | null;
+  activeAssignments: number;
+  skillMatch: boolean;
+  score: number;
 }
 
 interface Hotspot {
@@ -330,71 +584,87 @@ interface User {
   lastSeenAt?: string;
 }
 
+interface Organization {
+  id: string;
+  name: string;
+  type: string;
+  categories?: string[];
+  locationLabel?: string;
+  joinCode?: string;
+  planId?: "free" | "pro" | "enterprise";
+  subscriptionStatus?: "active" | "past_due" | "canceled";
+}
+
+interface BillingInfo {
+  planId: "free" | "pro" | "enterprise";
+  subscriptionStatus: "active" | "past_due" | "canceled";
+  currentPeriodEnd: string | null;
+  seatsUsed: number;
+  seatLimit: number | null;
+  hasBillingAccount: boolean;
+}
+
+type BadgeVariant =
+  | "success"
+  | "warning"
+  | "info"
+  | "destructive"
+  | "secondary"
+  | "default"
+  | "outline";
+
 const statusOptions = [
   {
     value: "reported",
     label: "Reported",
     icon: AlertCircle,
-    color:
-      "bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200",
   },
   {
     value: "in-progress",
     label: "In Progress",
     icon: Clock,
-    color:
-      "bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200",
   },
   {
     value: "resolved",
     label: "Resolved",
     icon: CheckCircle,
-    color:
-      "bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200",
   },
   {
     value: "rejected",
     label: "Rejected",
     icon: XCircle,
-    color:
-      "bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200",
   },
 ];
 
-const getStatusColor = (status: string) => {
-  const statusOption = statusOptions.find(
-    (opt) => opt.value === status,
-  );
-  return (
-    statusOption?.color ||
-    "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200"
-  );
-};
 
-const getPriorityColor = (priority: string) => {
-  switch (priority) {
-    case "high":
-      return "bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200";
-    case "medium":
-      return "bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200";
-    case "low":
-      return "bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200";
-    default:
-      return "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200";
-  }
-};
-
-const getRoleColor = (role: string) => {
+const getRoleVariant = (role: string): BadgeVariant => {
   switch (role) {
     case "admin":
-      return "bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-200";
+      return "default";
     case "technician":
-      return "bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200";
+      return "info";
     case "citizen":
-      return "bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200";
+      return "success";
     default:
-      return "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200";
+      return "secondary";
   }
+};
+
+const getAvailabilityInfo = (availability: string) => {
+  switch (availability) {
+    case "available":
+      return { icon: Wifi, color: "text-success" };
+    case "busy":
+      return { icon: Coffee, color: "text-warning" };
+    default:
+      return { icon: Moon, color: "text-muted-foreground" };
+  }
+};
+
+const getScoreVariant = (score: number): BadgeVariant => {
+  if (score >= 75) return "success";
+  if (score >= 50) return "warning";
+  return "destructive";
 };
 
 export function AdminPanel({
@@ -409,7 +679,7 @@ export function AdminPanel({
   tempRole?: string | null;
 }) {
   const [issues, setIssues] = useState<Issue[]>([]);
-  const [issueSort, setIssueSort] = useState<"recent" | "upvotes" | "flagged">("recent");
+  const [issueSort, setIssueSort] = useState<"recent" | "upvotes" | "flagged" | "credibility">("recent");
   const [hotspots, setHotspots] = useState<Hotspot[]>([]);
   const [hotspotsLoading, setHotspotsLoading] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
@@ -429,6 +699,8 @@ export function AdminPanel({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [assignDialogOpen, setAssignDialogOpen] =
     useState(false);
+  const [suggestions, setSuggestions] = useState<TechnicianSuggestion[]>([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [userDialogOpen, setUserDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] =
     useState(false);
@@ -453,6 +725,25 @@ export function AdminPanel({
     specificUserId: "",
     priority: "medium" as "low" | "medium" | "high",
   });
+
+  // Organization
+  const [organization, setOrganization] = useState<Organization | null | undefined>(undefined);
+  const [orgCategories, setOrgCategories] = useState<string[]>([]);
+  const [orgLocationLabel, setOrgLocationLabel] = useState("");
+  const [newCategoryInput, setNewCategoryInput] = useState("");
+  const [savingOrg, setSavingOrg] = useState(false);
+  const [regeneratingCode, setRegeneratingCode] = useState(false);
+  const [billing, setBilling] = useState<BillingInfo | null>(null);
+  const [checkoutLoading, setCheckoutLoading] = useState("");
+  const [portalLoading, setPortalLoading] = useState(false);
+
+  // Marketplace (Phase 11)
+  const [marketplaceDialogOpen, setMarketplaceDialogOpen] = useState(false);
+  const [marketplaceBudget, setMarketplaceBudget] = useState("");
+  const [marketplaceLoading, setMarketplaceLoading] = useState("");
+  const [contractors, setContractors] = useState<ContractorApplication[]>([]);
+  const [contractorsLoading, setContractorsLoading] = useState(false);
+  const [contractorActionLoading, setContractorActionLoading] = useState("");
 
   const t = translations[language];
   const { addToast } = useToast();
@@ -505,7 +796,7 @@ export function AdminPanel({
         `https://${projectId}.supabase.co/functions/v1/make-server-accecacf/hotspots`,
         {
           headers: {
-            Authorization: `Bearer ${publicAnonKey}`,
+            Authorization: `Bearer ${session?.access_token || publicAnonKey}`,
           },
         },
       );
@@ -565,6 +856,407 @@ export function AdminPanel({
       handleError(err.message || "Failed to load users");
     } finally {
       setUsersLoading(false);
+    }
+  };
+
+  const fetchOrganization = async () => {
+    try {
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/make-server-accecacf/organizations/me`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        },
+      );
+
+      if (!response.ok) throw new Error("Failed to fetch organization");
+
+      const data = await response.json();
+      setOrganization(data.organization);
+      if (data.organization) {
+        setOrgCategories(data.organization.categories || []);
+        setOrgLocationLabel(data.organization.locationLabel || "");
+      }
+    } catch (err: any) {
+      console.error("Fetch organization error:", err);
+      setOrganization(null);
+    }
+  };
+
+  const fetchBilling = async () => {
+    try {
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/make-server-accecacf/organizations/me/billing`,
+        { headers: { Authorization: `Bearer ${session.access_token}` } },
+      );
+      if (!response.ok) return;
+      const data = await response.json();
+      setBilling(data.billing);
+    } catch (err) {
+      console.error("Fetch billing error:", err);
+    }
+  };
+
+  const startCheckout = async (planId: "pro" | "enterprise") => {
+    try {
+      setCheckoutLoading(planId);
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/make-server-accecacf/organizations/me/billing/checkout`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ planId }),
+        },
+      );
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || t.billingCheckoutError);
+
+      window.location.href = data.checkoutUrl;
+    } catch (err: any) {
+      console.error("Start checkout error:", err);
+      handleError(err.message || t.billingCheckoutError);
+      setCheckoutLoading("");
+    }
+  };
+
+  const openPortal = async () => {
+    try {
+      setPortalLoading(true);
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/make-server-accecacf/organizations/me/billing/portal`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        },
+      );
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || t.billingPortalError);
+
+      window.location.href = data.portalUrl;
+    } catch (err: any) {
+      console.error("Open billing portal error:", err);
+      handleError(err.message || t.billingPortalError);
+      setPortalLoading(false);
+    }
+  };
+
+  const addOrgCategory = () => {
+    const value = newCategoryInput.trim();
+    if (!value || orgCategories.includes(value)) return;
+    setOrgCategories([...orgCategories, value]);
+    setNewCategoryInput("");
+  };
+
+  const removeOrgCategory = (index: number) => {
+    setOrgCategories(orgCategories.filter((_, i) => i !== index));
+  };
+
+  const saveOrganization = async () => {
+    if (orgCategories.length === 0) {
+      handleError(t.atLeastOneCategory);
+      return;
+    }
+
+    try {
+      setSavingOrg(true);
+
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/make-server-accecacf/organizations/me`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            categories: orgCategories,
+            locationLabel: orgLocationLabel,
+          }),
+        },
+      );
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || t.orgUpdateError);
+
+      setOrganization(data.organization);
+      setOrgCategories(data.organization.categories || []);
+      setOrgLocationLabel(data.organization.locationLabel || "");
+      addToast(t.orgUpdateSuccess, "success");
+    } catch (err: any) {
+      console.error("Save organization error:", err);
+      handleError(err.message || t.orgUpdateError);
+    } finally {
+      setSavingOrg(false);
+    }
+  };
+
+  const regenerateOrgJoinCode = async () => {
+    try {
+      setRegeneratingCode(true);
+
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/make-server-accecacf/organizations/me/regenerate-code`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        },
+      );
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || t.orgRegenerateError);
+
+      setOrganization((prev) => (prev ? { ...prev, joinCode: data.joinCode } : prev));
+    } catch (err: any) {
+      console.error("Regenerate join code error:", err);
+      handleError(err.message || t.orgRegenerateError);
+    } finally {
+      setRegeneratingCode(false);
+    }
+  };
+
+  const marketplaceStatusLabel = (status: string) => {
+    switch (status) {
+      case "open":
+        return t.marketplaceStatusOpen;
+      case "claimed":
+        return t.marketplaceStatusClaimed;
+      case "completed":
+        return t.marketplaceStatusCompleted;
+      case "paid":
+        return t.marketplaceStatusPaid;
+      default:
+        return status;
+    }
+  };
+
+  const fetchContractors = async () => {
+    try {
+      setContractorsLoading(true);
+
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/make-server-accecacf/marketplace/contractors`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(
+          data.error ||
+            `API error: ${response.status} ${response.statusText}`,
+        );
+      }
+
+      const data = await response.json();
+      setContractors(data.applications || []);
+    } catch (err: any) {
+      console.error("Fetch contractors error:", err);
+      handleError(err.message || "Failed to load contractor applications");
+    } finally {
+      setContractorsLoading(false);
+    }
+  };
+
+  const updateContractorStatus = async (userId: string, status: "approved" | "rejected") => {
+    try {
+      setContractorActionLoading(userId);
+
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/make-server-accecacf/marketplace/contractors/${userId}/status`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ status }),
+        },
+      );
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || t.contractorStatusError);
+
+      setContractors((prev) =>
+        prev.map((contractor) =>
+          contractor.id === userId ? { ...contractor, marketplaceStatus: status } : contractor
+        )
+      );
+      addToast(status === "approved" ? t.contractorApprovedSuccess : t.contractorRejectedSuccess, 'success');
+    } catch (err: any) {
+      console.error("Update contractor status error:", err);
+      handleError(err.message || t.contractorStatusError);
+    } finally {
+      setContractorActionLoading("");
+    }
+  };
+
+  const postIssueToMarketplace = async () => {
+    if (!selectedIssue) return;
+
+    const budget = Number(marketplaceBudget);
+    if (!budget || budget <= 0) {
+      handleError(t.invalidBudget);
+      return;
+    }
+
+    try {
+      setMarketplaceLoading(selectedIssue.id);
+
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/make-server-accecacf/issues/${selectedIssue.id}/marketplace`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ budget }),
+        },
+      );
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || t.postError);
+
+      setIssues((prev) => prev.map((issue) => (issue.id === data.issue.id ? data.issue : issue)));
+      setMarketplaceDialogOpen(false);
+      setSelectedIssue(null);
+      setMarketplaceBudget("");
+      addToast(t.postSuccess, 'success');
+    } catch (err: any) {
+      console.error("Post to marketplace error:", err);
+      handleError(err.message || t.postError);
+    } finally {
+      setMarketplaceLoading("");
+    }
+  };
+
+  const unpostIssueFromMarketplace = async (issueId: string) => {
+    try {
+      setMarketplaceLoading(issueId);
+
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/make-server-accecacf/issues/${issueId}/marketplace`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        },
+      );
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || t.unpostError);
+
+      setIssues((prev) => prev.map((issue) => (issue.id === data.issue.id ? data.issue : issue)));
+      addToast(t.unpostSuccess, 'success');
+    } catch (err: any) {
+      console.error("Unpost from marketplace error:", err);
+      handleError(err.message || t.unpostError);
+    } finally {
+      setMarketplaceLoading("");
+    }
+  };
+
+  const payContractorForJob = async (issueId: string) => {
+    try {
+      setMarketplaceLoading(issueId);
+
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/make-server-accecacf/marketplace/jobs/${issueId}/pay`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        },
+      );
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || t.payError);
+
+      window.open(data.checkoutUrl, '_blank');
+    } catch (err: any) {
+      console.error("Pay contractor error:", err);
+      handleError(err.message || t.payError);
+    } finally {
+      setMarketplaceLoading("");
+    }
+  };
+
+  const syncPaymentStatusForJob = async (issueId: string) => {
+    try {
+      setMarketplaceLoading(issueId);
+
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/make-server-accecacf/marketplace/jobs/${issueId}/sync-payment`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        },
+      );
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || t.syncPaymentError);
+
+      if (data.status === "paid") {
+        await fetchIssues();
+      }
+    } catch (err: any) {
+      console.error("Sync payment status error:", err);
+      handleError(err.message || t.syncPaymentError);
+    } finally {
+      setMarketplaceLoading("");
+    }
+  };
+
+  const fetchSuggestions = async (issueId: string) => {
+    try {
+      setSuggestionsLoading(true);
+      setSuggestions([]);
+
+      const headers: Record<string, string> = {
+        Authorization: `Bearer ${session.access_token}`,
+      };
+
+      if (tempRole) {
+        headers["X-Temp-Role"] = tempRole;
+      }
+
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/make-server-accecacf/issues/${issueId}/suggest-technicians`,
+        { headers },
+      );
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(
+          data.error ||
+            `API error: ${response.status} ${response.statusText}`,
+        );
+      }
+
+      const data = await response.json();
+      const fetchedSuggestions: TechnicianSuggestion[] = data.suggestions || [];
+      setSuggestions(fetchedSuggestions);
+      if (fetchedSuggestions.length > 0) {
+        setSelectedTechnician(fetchedSuggestions[0].technicianId);
+      }
+    } catch (err: any) {
+      console.error("Fetch suggestions error:", err);
+      handleError(err.message || "Failed to load suggested technicians");
+    } finally {
+      setSuggestionsLoading(false);
     }
   };
 
@@ -805,277 +1497,131 @@ export function AdminPanel({
       fetchIssues();
       fetchUsers();
       fetchHotspots();
+      fetchOrganization();
     }
   }, [session]);
 
+  useEffect(() => {
+    if (session?.access_token && organization === null) {
+      fetchContractors();
+    }
+  }, [session, organization]);
+
+  useEffect(() => {
+    if (session?.access_token && organization) {
+      fetchBilling();
+    }
+  }, [session, organization]);
+
+  // Picks up the redirect back from Stripe Checkout after a marketplace
+  // payment. We can't rely solely on the webhook having already landed by
+  // the time the browser redirects, so "success" triggers a sync-payment
+  // call as a belt-and-suspenders reconciliation.
+  useEffect(() => {
+    if (!session?.access_token) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const paymentResult = params.get("marketplacePayment");
+    const issueId = params.get("issueId");
+    const billingResult = params.get("billing");
+    if (!paymentResult && !billingResult) return;
+
+    if (paymentResult === "success") {
+      addToast(t.paymentSuccessToast, "success");
+      if (issueId) syncPaymentStatusForJob(issueId);
+    } else if (paymentResult === "cancelled") {
+      addToast(t.paymentCancelledToast, "info");
+    }
+
+    if (billingResult === "success") {
+      addToast(t.billingUpgradeSuccessToast, "success");
+      fetchBilling();
+    } else if (billingResult === "cancelled") {
+      addToast(t.billingUpgradeCancelledToast, "info");
+    }
+    setCheckoutLoading("");
+
+    params.delete("marketplacePayment");
+    params.delete("issueId");
+    params.delete("billing");
+    const newSearch = params.toString();
+    window.history.replaceState({}, "", `${window.location.pathname}${newSearch ? `?${newSearch}` : ""}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]);
+
   return (
-    <>
-      <style>{`
-        :root {
-          --background: #F8FAFC;
-          --foreground: #1E293B;
-          --card: #FFFFFF;
-          --muted-foreground: #64748B;
-          --primary: #2563EB;
-          --border: #E2E8F0;
-          --muted: #F1F5F9;
-          --destructive: #EF4444;
-          --destructive-foreground: #FFFFFF;
-          --yellow-100: #FEF9C3;
-          --yellow-200: #FEF08A;
-          --yellow-600: #EAB308;
-          --yellow-800: #CA8A04;
-          --yellow-900: #A16207;
-          --blue-100: #DBEAFE;
-          --blue-200: #BFDBFE;
-          --blue-400: #60A5FA;
-          --blue-600: #2563EB;
-          --blue-800: #1E40AF;
-          --blue-900: #1E3A8A;
-          --green-100: #DCFCE7;
-          --green-200: #BBF7D0;
-          --green-400: #4ADE80;
-          --green-600: #22C55E;
-          --green-800: #15803D;
-          --green-900: #166534;
-          --red-100: #FEE2E2;
-          --red-200: #FECACA;
-          --red-800: #991B1B;
-          --red-900: #7F1D1D;
-          --gray-100: #F3F4F6;
-          --gray-200: #E5E7EB;
-          --gray-400: #9CA3AF;
-          --gray-500: #6B7280;
-          --gray-600: #4B5563;
-          --gray-700: #374151;
-          --gray-800: #1F2A44;
-          --gray-900: #111827;
-        }
-        .dark {
-          --background: #0F172A;
-          --foreground: #F1F5F9;
-          --card: #1E293B;
-          --muted-foreground: #94A3B8;
-          --primary: #3B82F6;
-          --border: #334155;
-          --muted: #1E293B;
-          --destructive: #DC2626;
-          --destructive-foreground: #F1F5F9;
-          --yellow-100: #FEF9C3;
-          --yellow-200: #FEF08A;
-          --yellow-600: #EAB308;
-          --yellow-800: #CA8A04;
-          --yellow-900: #A16207;
-          --blue-100: #DBEAFE;
-          --blue-200: #BFDBFE;
-          --blue-400: #60A5FA;
-          --blue-600: #2563EB;
-          --blue-800: #1E40AF;
-          --blue-900: #1E3A8A;
-          --green-100: #DCFCE7;
-          --green-200: #BBF7D0;
-          --green-400: #4ADE80;
-          --green-600: #22C55E;
-          --green-800: #15803D;
-          --green-900: #166534;
-          --red-100: #FEE2E2;
-          --red-200: #FECACA;
-          --red-800: #991B1B;
-          --red-900: #7F1D1D;
-          --gray-100: #1F2A44;
-          --gray-200: #2D3748;
-          --gray-400: #6B7280;
-          --gray-500: #9CA3AF;
-          --gray-600: #D1D5DB;
-          --gray-700: #E5E7EB;
-          --gray-800: #D1D5DB;
-          --gray-900: #F3F4F6;
-        }
-        html { scroll-behavior: smooth; }
-        body {
-          background-color: var(--background);
-          color: var(--foreground);
-          transition: background-color 0.3s ease, color 0.3s ease;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-        }
-        .bg-background { background-color: var(--background); }
-        .bg-card { background-color: var(--card); }
-        .bg-muted { background-color: var(--muted); }
-        .text-foreground { color: var(--foreground); }
-        .text-muted-foreground { color: var(--muted-foreground); }
-        .text-primary { color: var(--primary); }
-        .border-border { border-color: var(--border); }
-        .bg-primary { background-color: var(--primary); }
-        .text-destructive { color: var(--destructive); }
-        .bg-destructive { background-color: var(--destructive); }
-        .text-destructive-foreground { color: var(--destructive-foreground); }
-        .bg-yellow-100 { background-color: var(--yellow-100); }
-        .bg-yellow-200 { background-color: var(--yellow-200); }
-        .text-yellow-600 { color: var(--yellow-600); }
-        .text-yellow-800 { color: var(--yellow-800); }
-        .bg-yellow-900\\/50 { background-color: rgba(161, 98, 7, 0.5); }
-        .text-yellow-200 { color: var(--yellow-200); }
-        .bg-blue-100 { background-color: var(--blue-100); }
-        .text-blue-600 { color: var(--blue-600); }
-        .text-blue-800 { color: var(--blue-800); }
-        .bg-blue-900\\/50 { background-color: rgba(30, 58, 138, 0.5); }
-        .text-blue-200 { color: var(--blue-200); }
-        .text-blue-400 { color: var(--blue-400); }
-        .bg-green-100 { background-color: var(--green-100); }
-        .text-green-600 { color: var(--green-600); }
-        .text-green-800 { color: var(--green-800); }
-        .bg-green-900\\/50 { background-color: rgba(22, 101, 52, 0.5); }
-        .text-green-200 { color: var(--green-200); }
-        .text-green-400 { color: var(--green-400); }
-        .bg-red-100 { background-color: var(--red-100); }
-        .text-red-800 { color: var(--red-800); }
-        .bg-red-900\\/50 { background-color: rgba(127, 29, 29, 0.5); }
-        .text-red-200 { color: var(--red-200); }
-        .bg-gray-100 { background-color: var(--gray-100); }
-        .bg-gray-800 { background-color: var(--gray-800); }
-        .text-gray-800 { color: var(--gray-800); }
-        .text-gray-200 { color: var(--gray-200); }
-        .text-gray-400 { color: var(--gray-400); }
-        .text-gray-500 { color: var(--gray-500); }
-        .text-gray-600 { color: var(--gray-600); }
-        .text-gray-700 { color: var(--gray-700); }
-        button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
-          outline: 2px solid var(--primary);
-          outline-offset: 2px;
-        }
-        .animate-spin {
-          animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        .h-4 { height: 1rem; }
-        .w-4 { width: 1rem; }
-        .h-5 { height: 1.25rem; }
-        .w-5 { width: 1.25rem; }
-        .h-6 { height: 1.5rem; }
-        .w-6 { width: 1.5rem; }
-        .h-12 { height: 3rem; }
-        .w-12 { width: 3rem; }
-        .w-16 { width: 4rem; }
-        .h-16 { height: 4rem; }
-        .w-24 { width: 6rem; }
-        .w-48 { width: 12rem; }
-        .text-sm { font-size: 0.875rem; }
-        .text-lg { font-size: 1.125rem; }
-        .font-medium { font-weight: 500; }
-        .font-semibold { font-weight: 600; }
-        .space-y-1 > * + * { margin-top: 0.25rem; }
-        .space-y-2 > * + * { margin-top: 0.5rem; }
-        .space-y-4 > * + * { margin-top: 1rem; }
-        .space-y-6 > * + * { margin-top: 1.5rem; }
-        .space-x-1 > * + * { margin-left: 0.25rem; }
-        .space-x-2 > * + * { margin-left: 0.5rem; }
-        .space-x-4 > * + * { margin-left: 1rem; }
-        .p-4 { padding: 1rem; }
-        .p-6 { padding: 1.5rem; }
-        .py-12 { padding-top: 3rem; padding-bottom: 3rem; }
-        .mb-2 { margin-bottom: 0.5rem; }
-        .mb-3 { margin-bottom: 0.75rem; }
-        .mb-4 { margin-bottom: 1rem; }
-        .ml-2 { margin-left: 0.5rem; }
-        .rounded-lg { border-radius: 0.5rem; }
-        .border { border-width: 1px; }
-        .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
-        .max-w-4xl { max-width: 56rem; }
-        .w-full { width: 100%; }
-        .flex { display: flex; }
-        .items-start { align-items: flex-start; }
-        .items-center { align-items: center; }
-        .justify-between { justify-content: space-between; }
-        .justify-center { justify-content: center; }
-        .text-center { text-align: center; }
-        .relative { position: relative; }
-        .transition-all { transition: all 0.3s ease; }
-        .hover\\:bg-muted:hover { background-color: var(--muted); }
-        .hover\\:bg-primary\\/90:hover { background-color: rgba(59, 130, 246, 0.9); }
-      `}</style>
-      <div className="min-h-screen bg-background p-4">
-        <div className="max-w-4xl mx-auto">
-          <div className="space-y-6">
-            <Tabs defaultValue={defaultView} className="space-y-6">
-              <TabsList className="bg-card border-border">
-                <TabsTrigger
-                  value="issues"
-                  className="flex items-center space-x-2 text-foreground hover:bg-muted"
-                >
-                  <Settings className="h-4 w-4" />
-                  <span>{t.issueManagement}</span>
-                </TabsTrigger>
-                <TabsTrigger
-                  value="hotspots"
-                  className="flex items-center space-x-2 text-foreground hover:bg-muted"
-                >
-                  <Flame className="h-4 w-4" />
-                  <span>{t.hotspots}</span>
-                </TabsTrigger>
-                <TabsTrigger
-                  value="users"
-                  className="flex items-center space-x-2 text-foreground hover:bg-muted"
-                >
-                  <Users className="h-4 w-4" />
-                  <span>{t.userManagement}</span>
-                </TabsTrigger>
-                <TabsTrigger
-                  value="notifications"
-                  className="flex items-center space-x-2 text-foreground hover:bg-muted"
-                >
-                  <Bell className="h-4 w-4" />
-                  <span>{t.notifications}</span>
-                </TabsTrigger>
-              </TabsList>
+    <div className="space-y-6 animate-fade-in">
+      <Tabs defaultValue={defaultView} className="space-y-6">
+        <TabsList className="w-full sm:w-auto overflow-x-auto justify-start">
+          <TabsTrigger value="issues" className="gap-1.5 whitespace-nowrap">
+            <Settings className="h-4 w-4" />
+            <span>{t.issueManagement}</span>
+          </TabsTrigger>
+          <TabsTrigger value="hotspots" className="gap-1.5 whitespace-nowrap">
+            <Flame className="h-4 w-4" />
+            <span>{t.hotspots}</span>
+          </TabsTrigger>
+          <TabsTrigger value="users" className="gap-1.5 whitespace-nowrap">
+            <Users className="h-4 w-4" />
+            <span>{t.userManagement}</span>
+          </TabsTrigger>
+          <TabsTrigger value="notifications" className="gap-1.5 whitespace-nowrap">
+            <Bell className="h-4 w-4" />
+            <span>{t.notifications}</span>
+          </TabsTrigger>
+          {organization && (
+            <TabsTrigger value="organization" className="gap-1.5 whitespace-nowrap">
+              <Building2 className="h-4 w-4" />
+              <span>{t.organization}</span>
+            </TabsTrigger>
+          )}
+          {organization === null && (
+            <TabsTrigger value="vetting" className="gap-1.5 whitespace-nowrap">
+              <Shield className="h-4 w-4" />
+              <span>{t.contractorVetting}</span>
+            </TabsTrigger>
+          )}
+        </TabsList>
 
               {/* Issues Management Tab */}
               <TabsContent value="issues" className="space-y-6">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
-                    <h2 className="text-lg font-semibold text-foreground flex items-center space-x-2">
-                      <Settings className="h-5 w-5" />
+                    <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                      <Settings className="h-5 w-5 text-primary" />
                       <span>{t.issueManagement}</span>
                     </h2>
                     <p className="text-sm text-muted-foreground">
                       {t.subtitle}
                     </p>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Select value={issueSort} onValueChange={(value) => setIssueSort(value as "recent" | "upvotes" | "flagged")}>
-                      <SelectTrigger className="w-44 bg-background border-border text-foreground">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Select value={issueSort} onValueChange={(value) => setIssueSort(value as "recent" | "upvotes" | "flagged" | "credibility")}>
+                      <SelectTrigger className="w-44">
                         <SelectValue placeholder={t.sortBy} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="recent">{t.sortRecent}</SelectItem>
                         <SelectItem value="upvotes">{t.sortUpvotes}</SelectItem>
                         <SelectItem value="flagged">{t.sortFlagged}</SelectItem>
+                        <SelectItem value="credibility">{t.sortCredibility}</SelectItem>
                       </SelectContent>
                     </Select>
                     <Button
                       variant="outline"
                       onClick={fetchIssues}
                       disabled={loading}
-                      className="bg-background border-border text-foreground hover:bg-muted"
                     >
-                      <Settings className="h-4 w-4 mr-2" />
+                      <RefreshCw className="h-4 w-4" />
                       {t.refreshIssues}
                     </Button>
                   </div>
                 </div>
 
                 {issues.length === 0 ? (
-                  <Card className="bg-card border-border shadow-lg">
-                    <CardContent className="text-center py-12">
-                      <Settings className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-foreground mb-2">
-                        {t.noIssuesTitle}
-                      </h3>
-                      <p className="text-muted-foreground">
-                        {t.noIssuesDesc}
-                      </p>
+                  <Card>
+                    <CardContent>
+                      <EmptyState icon={Settings} title={t.noIssuesTitle} description={t.noIssuesDesc} />
                     </CardContent>
                   </Card>
                 ) : (
@@ -1084,58 +1630,56 @@ export function AdminPanel({
                       .sort((a, b) => {
                         if (issueSort === "upvotes") return (b.upvotes ?? 0) - (a.upvotes ?? 0);
                         if (issueSort === "flagged") return (b.flagged ? 1 : 0) - (a.flagged ? 1 : 0);
+                        if (issueSort === "credibility") return (a.credibilityScore ?? 100) - (b.credibilityScore ?? 100);
                         return new Date(b.reportedAt).getTime() - new Date(a.reportedAt).getTime();
                       })
                       .map((issue) => (
-                      <Card
-                        key={issue.id}
-                        className="bg-card border-border shadow-lg"
-                      >
+                      <Card key={issue.id}>
                         <CardHeader>
-                          <div className="flex items-start justify-between">
+                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                             <div className="flex-1">
-                              <div className="flex items-center space-x-2 mb-2">
-                                <CardTitle className="text-lg text-foreground">
+                              <div className="flex flex-wrap items-center gap-2 mb-2">
+                                <CardTitle className="text-lg">
                                   {issue.title}
                                 </CardTitle>
-                                <Badge
-                                  variant="outline"
-                                  className={getPriorityColor(
-                                    issue.priority,
-                                  )}
-                                >
-                                  {issue.priority}
-                                </Badge>
+                                <StatusBadge kind="priority" value={issue.priority} label={issue.priority} />
                                 {(issue.upvotes ?? 0) > 0 && (
-                                  <Badge
-                                    variant="outline"
-                                    className="flex items-center gap-1 bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300"
-                                  >
+                                  <Badge variant="info">
                                     <ThumbsUp className="h-3 w-3" />
                                     {issue.upvotes}
                                   </Badge>
                                 )}
                                 {issue.flagged && (
-                                  <Badge
-                                    variant="outline"
-                                    className="flex items-center gap-1 bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200"
-                                  >
+                                  <Badge variant="destructive">
                                     <AlertTriangle className="h-3 w-3" />
                                     {t.needsAttention}
                                   </Badge>
                                 )}
+                                {issue.credibilityLevel && issue.credibilityLevel !== "high" && (
+                                  <CredibilityBadge
+                                    level={issue.credibilityLevel}
+                                    score={issue.credibilityScore}
+                                    signals={issue.credibilitySignals}
+                                  />
+                                )}
+                                {issue.reportedVia === "sms" && (
+                                  <Badge variant="outline" title={issue.reporterPhone}>
+                                    <MessageSquare className="h-3 w-3" />
+                                    {t.viaSms}
+                                  </Badge>
+                                )}
                               </div>
-                              <CardDescription className="space-y-1 text-muted-foreground">
-                                <div className="flex items-center space-x-4 text-sm">
-                                  <div className="flex items-center space-x-1">
+                              <CardDescription className="space-y-1">
+                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                                  <div className="flex items-center gap-1">
                                     <MapPin className="h-4 w-4" />
                                     <span>{issue.location}</span>
                                   </div>
-                                  <div className="flex items-center space-x-1">
+                                  <div className="flex items-center gap-1">
                                     <User className="h-4 w-4" />
                                     <span>{issue.reporterName}</span>
                                   </div>
-                                  <div className="flex items-center space-x-1">
+                                  <div className="flex items-center gap-1">
                                     <Clock className="h-4 w-4" />
                                     <span>
                                       {new Date(
@@ -1148,23 +1692,15 @@ export function AdminPanel({
                                   {t.category}: {issue.category}
                                 </div>
                                 {issue.assignedTechnicianName && (
-                                  <div className="text-sm text-blue-600 dark:text-blue-400">
+                                  <div className="text-sm text-info">
                                     {t.assignedTo}:{" "}
                                     {issue.assignedTechnicianName}
                                   </div>
                                 )}
                               </CardDescription>
                             </div>
-                            <div className="flex items-center space-x-2">
-                              <Badge
-                                className={getStatusColor(
-                                  issue.status,
-                                )}
-                              >
-                                {issue.status
-                                  .replace("-", " ")
-                                  .toUpperCase()}
-                              </Badge>
+                            <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+                              <StatusBadge kind="status" value={issue.status} label={issue.status.replace("-", " ")} />
                               <Dialog open={dialogOpen && selectedIssue?.id === issue.id} onOpenChange={(open) => {
                                 if (!open) {
                                   setDialogOpen(false);
@@ -1183,46 +1719,41 @@ export function AdminPanel({
                                       setAdminNote(issue.adminNote || "");
                                       setDialogOpen(true);
                                     }}
-                                    className="bg-background border-border text-foreground hover:bg-muted"
                                     disabled={updateLoading === issue.id}
                                   >
-                                    <Edit className="h-4 w-4 mr-1" />
+                                    <Edit className="h-4 w-4" />
                                     {t.update}
                                   </Button>
                                 </DialogTrigger>
-                                <DialogContent className="bg-card border-border">
+                                <DialogContent>
                                   <DialogHeader>
-                                    <DialogTitle className="text-foreground">
+                                    <DialogTitle>
                                       {t.updateIssueStatus}
                                     </DialogTitle>
-                                    <DialogDescription className="text-muted-foreground">
+                                    <DialogDescription>
                                       {t.updateDesc}
                                     </DialogDescription>
                                   </DialogHeader>
                                   <div>
                                     <div className="space-y-4">
                                       <div className="space-y-2">
-                                        <Label
-                                          htmlFor="status"
-                                          className="text-foreground"
-                                        >
+                                        <Label htmlFor="status">
                                           {t.status}
                                         </Label>
                                         <Select
                                           value={newStatus}
                                           onValueChange={setNewStatus}
                                         >
-                                          <SelectTrigger className="bg-background border-border text-foreground">
+                                          <SelectTrigger>
                                             <SelectValue placeholder={t.selectStatus} />
                                           </SelectTrigger>
-                                          <SelectContent className="bg-card shadow-lg z-50 rounded-lg">
+                                          <SelectContent>
                                             {statusOptions.map((status) => (
                                               <SelectItem
                                                 key={status.value}
                                                 value={status.value}
-                                                className="text-foreground"
                                               >
-                                                <div className="flex items-center space-x-2">
+                                                <div className="flex items-center gap-2">
                                                   <status.icon className="h-4 w-4" />
                                                   <span>{status.label}</span>
                                                 </div>
@@ -1232,10 +1763,7 @@ export function AdminPanel({
                                         </Select>
                                       </div>
                                       <div className="space-y-2">
-                                        <Label
-                                          htmlFor="adminNote"
-                                          className="text-foreground"
-                                        >
+                                        <Label htmlFor="adminNote">
                                           {t.adminNote}
                                         </Label>
                                         <Textarea
@@ -1244,7 +1772,6 @@ export function AdminPanel({
                                           value={adminNote}
                                           onChange={(e) => setAdminNote(e.target.value)}
                                           rows={3}
-                                          className="bg-background border-border text-foreground"
                                         />
                                       </div>
                                     </div>
@@ -1252,7 +1779,6 @@ export function AdminPanel({
                                       <Button
                                         variant="outline"
                                         onClick={() => setDialogOpen(false)}
-                                        className="bg-background border-border text-foreground hover:bg-muted"
                                       >
                                         {t.cancel}
                                       </Button>
@@ -1262,14 +1788,10 @@ export function AdminPanel({
                                           updateLoading === selectedIssue?.id ||
                                           !newStatus
                                         }
-                                        className="bg-primary text-white hover:bg-primary/90"
                                       >
                                         {updateLoading === selectedIssue?.id ? (
                                           <>
-                                            <svg className="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24">
-                                              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                                              <path fill="currentColor" d="M4 12a8 8 0 018-8v8h-8z" />
-                                            </svg>
+                                            <Loader2 className="h-4 w-4 animate-spin" />
                                             {t.updating}
                                           </>
                                         ) : (
@@ -1287,6 +1809,7 @@ export function AdminPanel({
                                       setAssignDialogOpen(false);
                                       setSelectedIssue(null);
                                       setSelectedTechnician("");
+                                      setSuggestions([]);
                                     }
                                   }}>
                                     <DialogTrigger asChild>
@@ -1297,56 +1820,100 @@ export function AdminPanel({
                                           setSelectedIssue(issue);
                                           setSelectedTechnician("");
                                           setAssignDialogOpen(true);
+                                          fetchSuggestions(issue.id);
                                         }}
-                                        className="bg-background border-border text-foreground hover:bg-muted"
                                         disabled={updateLoading === issue.id}
                                       >
-                                        <Wrench className="h-4 w-4 mr-1" />
+                                        <Wrench className="h-4 w-4" />
                                         {t.assignTechnician}
                                       </Button>
                                     </DialogTrigger>
-                                    <DialogContent className="bg-card border-border">
+                                    <DialogContent>
                                       <DialogHeader>
-                                        <DialogTitle className="text-foreground">
+                                        <DialogTitle>
                                           {t.assignTechnician}
                                         </DialogTitle>
-                                        <DialogDescription className="text-muted-foreground">
+                                        <DialogDescription>
                                           {t.assignDesc}
                                         </DialogDescription>
                                       </DialogHeader>
                                       <div className="space-y-4">
                                         <div className="space-y-2">
-                                          <Label
-                                            htmlFor="technician"
-                                            className="text-foreground"
-                                          >
-                                            {t.selectTechnician}
+                                          <Label>
+                                            {t.suggestedTechnicians}
                                           </Label>
-                                          <Select
-                                            value={selectedTechnician}
-                                            onValueChange={setSelectedTechnician}
-                                          >
-                                            <SelectTrigger className="bg-background border-border text-foreground">
-                                              <SelectValue placeholder={t.selectTechnician} />
-                                            </SelectTrigger>
-                                            <SelectContent className="bg-card shadow-lg z-50 rounded-lg">
-                                              {technicians.map((tech) => (
-                                                <SelectItem key={tech.id} value={tech.id} className="text-foreground">
-                                                  <div className="flex items-center space-x-2">
-                                                    <Wrench className="h-4 w-4" />
-                                                    <span>{tech.name}</span>
-                                                  </div>
-                                                </SelectItem>
-                                              ))}
-                                            </SelectContent>
-                                          </Select>
+                                          <p className="text-xs text-muted-foreground">
+                                            {t.suggestedTechniciansDesc}
+                                          </p>
+                                          {suggestionsLoading ? (
+                                            <div className="flex items-center justify-center gap-2 py-6 text-muted-foreground">
+                                              <Loader2 className="h-5 w-5 animate-spin" />
+                                              {t.loadingSuggestions}
+                                            </div>
+                                          ) : suggestions.length === 0 ? (
+                                            <p className="text-sm text-muted-foreground py-4 text-center">
+                                              {t.noSuggestions}
+                                            </p>
+                                          ) : (
+                                            <div className="space-y-2 max-h-80 overflow-y-auto">
+                                              {suggestions.map((tech) => {
+                                                const availabilityInfo = getAvailabilityInfo(tech.availability);
+                                                const AvailabilityIcon = availabilityInfo.icon;
+                                                const availabilityLabel = tech.availability === "off_duty" ? "offDuty" : tech.availability;
+                                                return (
+                                                  <button
+                                                    type="button"
+                                                    key={tech.technicianId}
+                                                    onClick={() => setSelectedTechnician(tech.technicianId)}
+                                                    className={`w-full text-left p-3 rounded-xl border transition-colors ${
+                                                      selectedTechnician === tech.technicianId
+                                                        ? "border-primary bg-primary/5"
+                                                        : "border-border hover:bg-muted"
+                                                    }`}
+                                                  >
+                                                    <div className="flex items-center justify-between mb-1.5 gap-2">
+                                                      <div className="flex items-center gap-2">
+                                                        <span className="font-medium text-foreground">{tech.name}</span>
+                                                        {tech.skillMatch && (
+                                                          <Badge variant="outline" className="text-xs">
+                                                            <Sparkles className="h-3 w-3" />
+                                                            {t.skillMatch}
+                                                          </Badge>
+                                                        )}
+                                                      </div>
+                                                      <Badge variant={getScoreVariant(tech.score)}>
+                                                        {tech.score}% {t.matchScore}
+                                                      </Badge>
+                                                    </div>
+                                                    <div className="flex items-center flex-wrap gap-3 text-xs text-muted-foreground">
+                                                      <span className={`flex items-center gap-1 ${availabilityInfo.color}`}>
+                                                        <AvailabilityIcon className="h-3.5 w-3.5" />
+                                                        <span>{t[availabilityLabel as keyof typeof t]}</span>
+                                                      </span>
+                                                      <span className="flex items-center gap-1">
+                                                        <Navigation className="h-3.5 w-3.5" />
+                                                        <span>
+                                                          {tech.distanceKm !== null
+                                                            ? `${tech.distanceKm} km ${t.away}`
+                                                            : t.distanceUnknown}
+                                                        </span>
+                                                      </span>
+                                                      <span className="flex items-center gap-1">
+                                                        <Wrench className="h-3.5 w-3.5" />
+                                                        <span>{tech.activeAssignments} {t.activeTasks}</span>
+                                                      </span>
+                                                    </div>
+                                                  </button>
+                                                );
+                                              })}
+                                            </div>
+                                          )}
                                         </div>
                                       </div>
                                       <DialogFooter>
                                         <Button
                                           variant="outline"
                                           onClick={() => setAssignDialogOpen(false)}
-                                          className="bg-background border-border text-foreground hover:bg-muted"
                                         >
                                           {t.cancel}
                                         </Button>
@@ -1356,7 +1923,6 @@ export function AdminPanel({
                                             updateLoading === selectedIssue?.id ||
                                             !selectedTechnician
                                           }
-                                          className="bg-primary text-white hover:bg-primary/90"
                                         >
                                           {updateLoading === selectedIssue?.id
                                             ? t.assigning
@@ -1366,7 +1932,7 @@ export function AdminPanel({
                                     </DialogContent>
                                   </Dialog>
                                 )}
-                              <IssueComments issueId={issue.id} session={session} language={language} tempRole={tempRole} />
+                              <Comments entityType="issue" entityId={issue.id} session={session} language={language} tempRole={tempRole} />
                             </div>
                           </div>
                         </CardHeader>
@@ -1380,16 +1946,16 @@ export function AdminPanel({
                               <img
                                 src={issue.photoUrl}
                                 alt="Issue photo"
-                                className="w-full max-w-sm h-32 object-cover rounded-lg border border-border"
+                                className="w-full max-w-sm h-32 object-cover rounded-xl border border-border"
                               />
                             )}
 
                             {issue.adminNote && (
-                              <div className="bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-                                <h4 className="font-medium text-blue-900 dark:text-blue-100 text-sm mb-1">
+                              <div className="rounded-xl border border-border/50 bg-muted/30 p-3">
+                                <h4 className="font-medium text-foreground text-sm mb-1">
                                   {t.currentAdminNote}
                                 </h4>
-                                <p className="text-blue-800 dark:text-blue-200 text-sm">
+                                <p className="text-muted-foreground text-sm">
                                   {issue.adminNote}
                                 </p>
                               </div>
@@ -1401,6 +1967,125 @@ export function AdminPanel({
                                 issue.updatedAt,
                               ).toLocaleString()}
                             </div>
+
+                            {!issue.assignedTechnician &&
+                              !issue.marketplace &&
+                              issue.status !== "resolved" &&
+                              issue.status !== "rejected" && (
+                                <Dialog
+                                  open={marketplaceDialogOpen && selectedIssue?.id === issue.id}
+                                  onOpenChange={(open) => {
+                                    if (!open) {
+                                      setMarketplaceDialogOpen(false);
+                                      setSelectedIssue(null);
+                                      setMarketplaceBudget("");
+                                    }
+                                  }}
+                                >
+                                  <DialogTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        setSelectedIssue(issue);
+                                        setMarketplaceBudget("");
+                                        setMarketplaceDialogOpen(true);
+                                      }}
+                                    >
+                                      <Store className="h-4 w-4" />
+                                      {t.postToMarketplace}
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent>
+                                    <DialogHeader>
+                                      <DialogTitle>
+                                        {t.postToMarketplace}
+                                      </DialogTitle>
+                                      <DialogDescription>
+                                        {t.postToMarketplaceDesc}
+                                      </DialogDescription>
+                                    </DialogHeader>
+                                    <div className="space-y-2">
+                                      <Label htmlFor="marketplaceBudget">
+                                        {t.marketplaceBudgetLabel}
+                                      </Label>
+                                      <Input
+                                        id="marketplaceBudget"
+                                        type="number"
+                                        min="1"
+                                        step="0.01"
+                                        placeholder={t.marketplaceBudgetPlaceholder}
+                                        value={marketplaceBudget}
+                                        onChange={(e) => setMarketplaceBudget(e.target.value)}
+                                      />
+                                    </div>
+                                    <DialogFooter>
+                                      <Button
+                                        variant="outline"
+                                        onClick={() => setMarketplaceDialogOpen(false)}
+                                      >
+                                        {t.cancel}
+                                      </Button>
+                                      <Button
+                                        onClick={postIssueToMarketplace}
+                                        disabled={marketplaceLoading === issue.id || !marketplaceBudget}
+                                      >
+                                        {marketplaceLoading === issue.id ? t.posting : t.post}
+                                      </Button>
+                                    </DialogFooter>
+                                  </DialogContent>
+                                </Dialog>
+                              )}
+
+                            {issue.marketplace && (
+                              <div className="flex items-center flex-wrap gap-2">
+                                <StatusBadge
+                                  kind="marketplace"
+                                  value={issue.marketplace.status}
+                                  label={`${t.marketplaceLabel}: ${marketplaceStatusLabel(issue.marketplace.status)}`}
+                                />
+                                <span className="text-sm text-muted-foreground flex items-center gap-0.5">
+                                  <DollarSign className="h-3.5 w-3.5" />
+                                  {issue.marketplace.budget.toFixed(2)}
+                                </span>
+                                {issue.marketplace.contractorName && (
+                                  <span className="text-sm text-muted-foreground">
+                                    {t.assignedTo}: {issue.marketplace.contractorName}
+                                  </span>
+                                )}
+                                {issue.marketplace.status === "open" && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => unpostIssueFromMarketplace(issue.id)}
+                                    disabled={marketplaceLoading === issue.id}
+                                  >
+                                    {t.cancelPosting}
+                                  </Button>
+                                )}
+                                {issue.marketplace.status === "completed" && (
+                                  <Button
+                                    size="sm"
+                                    onClick={() => payContractorForJob(issue.id)}
+                                    disabled={marketplaceLoading === issue.id}
+                                  >
+                                    <CreditCard className="h-4 w-4" />
+                                    {marketplaceLoading === issue.id ? t.paying : t.payContractor}
+                                  </Button>
+                                )}
+                                {issue.marketplace.status === "completed" && issue.marketplace.transactionId && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => syncPaymentStatusForJob(issue.id)}
+                                    disabled={marketplaceLoading === issue.id}
+                                  >
+                                    <RefreshCw className={`h-4 w-4 ${marketplaceLoading === issue.id ? "animate-spin" : ""}`} />
+                                    {marketplaceLoading === issue.id ? t.syncingPayment : t.syncPayment}
+                                  </Button>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </CardContent>
                       </Card>
@@ -1411,10 +2096,10 @@ export function AdminPanel({
 
               {/* Hotspots Tab */}
               <TabsContent value="hotspots" className="space-y-6">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
-                    <h2 className="text-lg font-semibold text-foreground flex items-center space-x-2">
-                      <Flame className="h-5 w-5" />
+                    <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                      <Flame className="h-5 w-5 text-primary" />
                       <span>{t.hotspots}</span>
                     </h2>
                     <p className="text-sm text-muted-foreground">
@@ -1425,56 +2110,40 @@ export function AdminPanel({
                     variant="outline"
                     onClick={fetchHotspots}
                     disabled={hotspotsLoading}
-                    className="bg-background border-border text-foreground hover:bg-muted"
                   >
-                    <Settings className="h-4 w-4 mr-2" />
+                    <RefreshCw className="h-4 w-4" />
                     {t.refreshHotspots}
                   </Button>
                 </div>
 
                 {hotspots.length === 0 ? (
-                  <Card className="bg-card border-border shadow-lg">
-                    <CardContent className="text-center py-12">
-                      <Flame className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-foreground mb-2">
-                        {t.noHotspotsTitle}
-                      </h3>
-                      <p className="text-muted-foreground">
-                        {t.noHotspotsDesc}
-                      </p>
+                  <Card>
+                    <CardContent>
+                      <EmptyState icon={Flame} title={t.noHotspotsTitle} description={t.noHotspotsDesc} />
                     </CardContent>
                   </Card>
                 ) : (
                   <div className="space-y-4">
                     {hotspots.map((hotspot) => (
-                      <Card
-                        key={hotspot.location}
-                        className="bg-card border-border shadow-lg"
-                      >
+                      <Card key={hotspot.location}>
                         <CardHeader>
-                          <div className="flex items-start justify-between">
+                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                             <div className="flex-1">
-                              <CardTitle className="text-lg text-foreground flex items-center space-x-2">
-                                <MapPin className="h-4 w-4" />
+                              <CardTitle className="text-lg flex items-center gap-2">
+                                <MapPin className="h-4 w-4 text-primary" />
                                 <span>{hotspot.location}</span>
                               </CardTitle>
-                              <CardDescription className="text-muted-foreground">
+                              <CardDescription>
                                 {t.topCategory}: {hotspot.topCategory}
                               </CardDescription>
                             </div>
-                            <div className="flex items-center space-x-2">
-                              <Badge
-                                variant="outline"
-                                className="flex items-center gap-1 bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200"
-                              >
+                            <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+                              <Badge variant="warning">
                                 <Flame className="h-3 w-3" />
                                 {hotspot.totalIssues} {t.totalIssuesLabel}
                               </Badge>
                               {hotspot.flaggedIssues > 0 && (
-                                <Badge
-                                  variant="outline"
-                                  className="flex items-center gap-1 bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200"
-                                >
+                                <Badge variant="destructive">
                                   <AlertTriangle className="h-3 w-3" />
                                   {hotspot.flaggedIssues}
                                 </Badge>
@@ -1509,24 +2178,23 @@ export function AdminPanel({
 
               {/* Users Management Tab */}
               <TabsContent value="users" className="space-y-6">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
-                    <h2 className="text-lg font-semibold text-foreground flex items-center space-x-2">
-                      <Users className="h-5 w-5" />
+                    <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                      <Users className="h-5 w-5 text-primary" />
                       <span>{t.userManagement}</span>
                     </h2>
                     <p className="text-sm text-muted-foreground">
                       {t.usersSubtitle}
                     </p>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Button
                       variant="outline"
                       onClick={fetchUsers}
                       disabled={usersLoading}
-                      className="bg-background border-border text-foreground hover:bg-muted"
                     >
-                      <Settings className="h-4 w-4 mr-2" />
+                      <RefreshCw className="h-4 w-4" />
                       {t.refreshUsers}
                     </Button>
                     <Button
@@ -1542,37 +2210,27 @@ export function AdminPanel({
                         });
                         setUserDialogOpen(true);
                       }}
-                      className="bg-primary text-white hover:bg-primary/90"
                     >
-                      <UserPlus className="h-4 w-4 mr-2" />
+                      <UserPlus className="h-4 w-4" />
                       {t.addUser}
                     </Button>
                   </div>
                 </div>
 
                 {users.length === 0 ? (
-                  <Card className="bg-card border-border shadow-lg">
-                    <CardContent className="text-center py-12">
-                      <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-foreground mb-2">
-                        {t.noUsersTitle}
-                      </h3>
-                      <p className="text-muted-foreground">
-                        {t.noUsersDesc}
-                      </p>
+                  <Card>
+                    <CardContent>
+                      <EmptyState icon={Users} title={t.noUsersTitle} description={t.noUsersDesc} />
                     </CardContent>
                   </Card>
                 ) : (
                   <div className="space-y-4">
                     {users.map((user) => (
-                      <Card
-                        key={user.id}
-                        className="bg-card border-border shadow-lg"
-                      >
+                      <Card key={user.id}>
                         <CardContent className="p-6">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-4">
-                              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-green-500 rounded-full flex items-center justify-center text-white">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 bg-gradient-brand rounded-full flex items-center justify-center text-white shrink-0">
                                 {user.name.charAt(0).toUpperCase()}
                               </div>
                               <div>
@@ -1582,25 +2240,16 @@ export function AdminPanel({
                                 <p className="text-sm text-muted-foreground">
                                   {user.email}
                                 </p>
-                                <div className="flex items-center space-x-2 mt-1">
-                                  <Badge
-                                    className={getRoleColor(
-                                      user.role,
-                                    )}
-                                  >
+                                <div className="flex flex-wrap items-center gap-2 mt-1">
+                                  <Badge variant={getRoleVariant(user.role)}>
                                     {t[user.role as keyof typeof t] ||
                                       user.role}
                                   </Badge>
                                   <Badge
                                     variant={
                                       user.status === "active"
-                                        ? "default"
+                                        ? "success"
                                         : "secondary"
-                                    }
-                                    className={
-                                      user.status === "active"
-                                        ? "bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200"
-                                        : "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200"
                                     }
                                   >
                                     {t[
@@ -1636,7 +2285,7 @@ export function AdminPanel({
                                 </div>
                               </div>
                             </div>
-                            <div className="flex items-center space-x-2">
+                            <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -1652,21 +2301,20 @@ export function AdminPanel({
                                   });
                                   setUserDialogOpen(true);
                                 }}
-                                className="bg-background border-border text-foreground hover:bg-muted"
                               >
-                                <Edit className="h-4 w-4 mr-1" />
+                                <Edit className="h-4 w-4" />
                                 {t.editUser}
                               </Button>
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="text-destructive hover:text-destructive hover:bg-muted"
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
                                 onClick={() => {
                                   setSelectedUser(user);
                                   setDeleteDialogOpen(true);
                                 }}
                               >
-                                <Trash2 className="h-4 w-4 mr-1" />
+                                <Trash2 className="h-4 w-4" />
                                 {t.deleteUser}
                               </Button>
                             </div>
@@ -1683,10 +2331,10 @@ export function AdminPanel({
                 value="notifications"
                 className="space-y-6"
               >
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
-                    <h2 className="text-lg font-semibold text-foreground flex items-center space-x-2">
-                      <Bell className="h-5 w-5" />
+                    <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                      <Bell className="h-5 w-5 text-primary" />
                       <span>{t.notifications}</span>
                     </h2>
                     <p className="text-sm text-muted-foreground">
@@ -1704,43 +2352,312 @@ export function AdminPanel({
                       });
                       setNotificationDialogOpen(true);
                     }}
-                    className="bg-primary text-white hover:bg-primary/90"
                   >
-                    <Send className="h-4 w-4 mr-2" />
+                    <Send className="h-4 w-4" />
                     {t.sendNotification}
                   </Button>
                 </div>
 
-                <Card className="bg-card border-border shadow-lg">
-                  <CardContent className="text-center py-12">
-                    <Bell className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-foreground mb-2">
-                      {t.sendNotification}
-                    </h3>
-                    <p className="text-muted-foreground mb-6">
-                      Send notifications to users and technicians
-                      about updates, announcements, or important
-                      information.
-                    </p>
-                    <Button
-                      onClick={() => {
-                        setNotificationForm({
-                          title: "",
-                          message: "",
-                          recipientType: "all",
-                          specificUserId: "",
-                          priority: "medium",
-                        });
-                        setNotificationDialogOpen(true);
+                <Card>
+                  <CardContent>
+                    <EmptyState
+                      icon={Bell}
+                      title={t.sendNotification}
+                      description="Send notifications to users and technicians about updates, announcements, or important information."
+                      action={{
+                        label: t.sendNotification,
+                        onClick: () => {
+                          setNotificationForm({
+                            title: "",
+                            message: "",
+                            recipientType: "all",
+                            specificUserId: "",
+                            priority: "medium",
+                          });
+                          setNotificationDialogOpen(true);
+                        },
                       }}
-                      className="bg-primary text-white hover:bg-primary/90"
-                    >
-                      <Send className="h-4 w-4 mr-2" />
-                      {t.sendNotification}
-                    </Button>
+                    />
                   </CardContent>
                 </Card>
               </TabsContent>
+
+              {organization && (
+                <TabsContent value="organization" className="space-y-6">
+                  <div>
+                    <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                      <Building2 className="h-5 w-5 text-primary" />
+                      <span>{t.organization}</span>
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                      {t.organizationSubtitle}
+                    </p>
+                  </div>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>{t.orgCategories}</CardTitle>
+                      <CardDescription>{t.orgCategoriesDesc}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex flex-wrap gap-2">
+                        {orgCategories.map((cat, index) => (
+                          <Badge
+                            key={`${cat}-${index}`}
+                            variant="secondary"
+                            className="pr-1"
+                          >
+                            <span>{cat}</span>
+                            <button
+                              type="button"
+                              onClick={() => removeOrgCategory(index)}
+                              aria-label={t.removeCategoryAria}
+                              className="rounded-full hover:bg-muted p-0.5"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                        <Input
+                          value={newCategoryInput}
+                          onChange={(e) => setNewCategoryInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              addOrgCategory();
+                            }
+                          }}
+                          placeholder={t.newCategoryPlaceholder}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={addOrgCategory}
+                          disabled={!newCategoryInput.trim()}
+                        >
+                          <Plus className="h-4 w-4" />
+                          {t.addCategory}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>{t.orgLocationLabel}</CardTitle>
+                      <CardDescription>{t.orgLocationLabelDesc}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Input
+                        value={orgLocationLabel}
+                        onChange={(e) => setOrgLocationLabel(e.target.value)}
+                        placeholder={t.orgLocationLabelPlaceholder}
+                      />
+                    </CardContent>
+                  </Card>
+
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={saveOrganization}
+                      disabled={savingOrg}
+                    >
+                      {savingOrg ? t.saving : t.saveOrganization}
+                    </Button>
+                  </div>
+
+                  {organization.joinCode && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>{t.joinCode}</CardTitle>
+                        <CardDescription>{t.joinCodeHint}</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <code className="px-3 py-1.5 bg-muted rounded-xl text-sm font-mono">
+                            {organization.joinCode}
+                          </code>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={regenerateOrgJoinCode}
+                            disabled={regeneratingCode}
+                          >
+                            <RefreshCw className={`h-4 w-4 ${regeneratingCode ? "animate-spin" : ""}`} />
+                            {t.regenerateCode}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <CreditCard className="h-5 w-5 text-primary" />
+                        <span>{t.billingTitle}</span>
+                      </CardTitle>
+                      <CardDescription>{t.billingDesc}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {billing && (
+                        <>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge variant="secondary" className="capitalize">
+                              {billing.planId === "free" ? t.planFree : billing.planId === "pro" ? t.planPro : t.planEnterprise}
+                            </Badge>
+                            <Badge
+                              variant={
+                                billing.subscriptionStatus === "active"
+                                  ? "success"
+                                  : billing.subscriptionStatus === "past_due"
+                                  ? "warning"
+                                  : "destructive"
+                              }
+                            >
+                              {billing.subscriptionStatus === "active"
+                                ? t.subscriptionStatusActive
+                                : billing.subscriptionStatus === "past_due"
+                                ? t.subscriptionStatusPastDue
+                                : t.subscriptionStatusCanceled}
+                            </Badge>
+                            <span className="text-sm text-muted-foreground">
+                              {billing.seatLimit === null
+                                ? t.seatsUsedUnlimited.replace("{used}", String(billing.seatsUsed))
+                                : t.seatsUsedLabel
+                                    .replace("{used}", String(billing.seatsUsed))
+                                    .replace("{limit}", String(billing.seatLimit))}
+                            </span>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2">
+                            {billing.planId === "free" && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  onClick={() => startCheckout("pro")}
+                                  disabled={checkoutLoading !== ""}
+                                >
+                                  {checkoutLoading === "pro" ? t.upgrading : t.upgradeToPro}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => startCheckout("enterprise")}
+                                  disabled={checkoutLoading !== ""}
+                                >
+                                  {checkoutLoading === "enterprise" ? t.upgrading : t.upgradeToEnterprise}
+                                </Button>
+                              </>
+                            )}
+                            {billing.hasBillingAccount && (
+                              <Button size="sm" variant="outline" onClick={openPortal} disabled={portalLoading}>
+                                {portalLoading ? t.openingPortal : t.manageBilling}
+                              </Button>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              )}
+
+              {organization === null && (
+                <TabsContent value="vetting" className="space-y-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                      <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                        <Shield className="h-5 w-5 text-primary" />
+                        <span>{t.contractorVetting}</span>
+                      </h2>
+                      <p className="text-sm text-muted-foreground">
+                        {t.contractorVettingSubtitle}
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={fetchContractors}
+                      disabled={contractorsLoading}
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      {t.refreshUsers}
+                    </Button>
+                  </div>
+
+                  {contractors.length === 0 ? (
+                    <Card>
+                      <CardContent>
+                        <EmptyState icon={Shield} title={t.noContractorApplications} description={t.noContractorApplicationsDesc} />
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <div className="space-y-4">
+                      {contractors.map((contractor) => (
+                        <Card key={contractor.id}>
+                          <CardContent className="p-6">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                              <div>
+                                <h3 className="font-medium text-foreground">{contractor.name}</h3>
+                                <p className="text-sm text-muted-foreground">{contractor.email}</p>
+                                <div className="flex items-center flex-wrap gap-1 mt-2">
+                                  <Badge
+                                    variant={
+                                      contractor.marketplaceStatus === "approved"
+                                        ? "success"
+                                        : contractor.marketplaceStatus === "rejected"
+                                        ? "destructive"
+                                        : "warning"
+                                    }
+                                  >
+                                    {contractor.marketplaceStatus === "approved"
+                                      ? t.applicationApproved
+                                      : contractor.marketplaceStatus === "rejected"
+                                      ? t.applicationRejected
+                                      : t.applicationPending}
+                                  </Badge>
+                                  <Badge variant="outline" className="flex items-center gap-1">
+                                    <CreditCard className="h-3 w-3" />
+                                    {contractor.stripeOnboardingComplete ? t.stripeConnected : t.stripeNotConnected}
+                                  </Badge>
+                                  {contractor.categories.map((category) => (
+                                    <Badge key={category} variant="outline" className="text-xs">
+                                      {category}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                              {contractor.marketplaceStatus === "pending" && (
+                                <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => updateContractorStatus(contractor.id, "approved")}
+                                    disabled={contractorActionLoading === contractor.id}
+                                  >
+                                    <CheckCircle className="h-4 w-4" />
+                                    {t.approve}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => updateContractorStatus(contractor.id, "rejected")}
+                                    disabled={contractorActionLoading === contractor.id}
+                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  >
+                                    <XCircle className="h-4 w-4" />
+                                    {t.reject}
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+              )}
             </Tabs>
 
             {/* User Dialog */}
@@ -1748,19 +2665,16 @@ export function AdminPanel({
               open={userDialogOpen}
               onOpenChange={setUserDialogOpen}
             >
-              <DialogContent className="bg-card border-border">
+              <DialogContent>
                 <DialogHeader>
-                  <DialogTitle className="text-foreground">
+                  <DialogTitle>
                     {selectedUser ? t.editUserDetails : t.addNewUser}
                   </DialogTitle>
                 </DialogHeader>
 
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label
-                      htmlFor="userName"
-                      className="text-foreground"
-                    >
+                    <Label htmlFor="userName">
                       {t.userName}
                     </Label>
                     <Input
@@ -1773,14 +2687,10 @@ export function AdminPanel({
                           name: e.target.value,
                         }))
                       }
-                      className="bg-background border-border text-foreground"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label
-                      htmlFor="userEmail"
-                      className="text-foreground"
-                    >
+                    <Label htmlFor="userEmail">
                       {t.userEmail}
                     </Label>
                     <Input
@@ -1794,15 +2704,11 @@ export function AdminPanel({
                           email: e.target.value,
                         }))
                       }
-                      className="bg-background border-border text-foreground"
                     />
                   </div>
                   {!selectedUser && (
                     <div className="space-y-2">
-                      <Label
-                        htmlFor="userPassword"
-                        className="text-foreground"
-                      >
+                      <Label htmlFor="userPassword">
                         Password
                       </Label>
                       <Input
@@ -1816,14 +2722,12 @@ export function AdminPanel({
                             password: e.target.value,
                           }))
                         }
-                        className="bg-background border-border text-foreground"
                       />
                     </div>
                   )}
                   <div className="space-y-2">
                     <Label
                       htmlFor="userRole"
-                      className="text-foreground"
                     >
                       {t.userRole}
                     </Label>
@@ -1836,27 +2740,24 @@ export function AdminPanel({
                         }))
                       }
                     >
-                      <SelectTrigger className="bg-background border-border text-foreground">
+                      <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-card shadow-lg z-50 rounded-lg">
-                        <SelectItem value="citizen" className="text-foreground">
+                      <SelectContent>
+                        <SelectItem value="citizen">
                           {t.citizen}
                         </SelectItem>
-                        <SelectItem value="technician" className="text-foreground">
+                        <SelectItem value="technician">
                           {t.technician}
                         </SelectItem>
-                        <SelectItem value="admin" className="text-foreground">
+                        <SelectItem value="admin">
                           {t.admin}
                         </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label
-                      htmlFor="userStatus"
-                      className="text-foreground"
-                    >
+                    <Label htmlFor="userStatus">
                       {t.userStatus}
                     </Label>
                     <Select
@@ -1868,14 +2769,14 @@ export function AdminPanel({
                         }))
                       }
                     >
-                      <SelectTrigger className="bg-background border-border text-foreground">
+                      <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-card shadow-lg z-50 rounded-lg">
-                        <SelectItem value="active" className="text-foreground">
+                      <SelectContent>
+                        <SelectItem value="active">
                           {t.active}
                         </SelectItem>
-                        <SelectItem value="inactive" className="text-foreground">
+                        <SelectItem value="inactive">
                           {t.inactive}
                         </SelectItem>
                       </SelectContent>
@@ -1885,11 +2786,11 @@ export function AdminPanel({
 
                 {userForm.role === 'technician' && (
                   <div className="space-y-2">
-                    <Label className="text-foreground">{t.categories}</Label>
+                    <Label>{t.categories}</Label>
                     <p className="text-sm text-muted-foreground">{t.selectCategories}</p>
-                    <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto">
                       {issueCategories.map(category => (
-                        <div key={category} className="flex items-center space-x-2">
+                        <div key={category} className="flex items-center gap-2">
                           <Checkbox
                             id={`category-${category}`}
                             checked={userForm.categories.includes(category)}
@@ -1901,7 +2802,7 @@ export function AdminPanel({
                               }
                             }}
                           />
-                          <Label htmlFor={`category-${category}`} className="text-sm text-foreground">{category}</Label>
+                          <Label htmlFor={`category-${category}`} className="text-sm">{category}</Label>
                         </div>
                       ))}
                     </div>
@@ -1912,7 +2813,6 @@ export function AdminPanel({
                   <Button
                     variant="outline"
                     onClick={() => setUserDialogOpen(false)}
-                    className="bg-background border-border text-foreground hover:bg-muted"
                   >
                     {t.cancel}
                   </Button>
@@ -1924,14 +2824,10 @@ export function AdminPanel({
                       !userForm.email ||
                       (!selectedUser && !userForm.password)
                     }
-                    className="bg-primary text-white hover:bg-primary/90"
                   >
                     {updateLoading === "user" ? (
                       <>
-                        <svg className="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24">
-                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                          <path fill="currentColor" d="M4 12a8 8 0 018-8v8h-8z" />
-                        </svg>
+                        <Loader2 className="h-4 w-4 animate-spin" />
                         {t.saving}
                       </>
                     ) : (
@@ -1947,12 +2843,12 @@ export function AdminPanel({
               open={deleteDialogOpen}
               onOpenChange={setDeleteDialogOpen}
             >
-              <DialogContent className="bg-card border-border">
+              <DialogContent>
                 <DialogHeader>
-                  <DialogTitle className="text-foreground">
+                  <DialogTitle>
                     {t.confirmDelete}
                   </DialogTitle>
-                  <DialogDescription className="text-muted-foreground">
+                  <DialogDescription>
                     {t.deleteUserConfirm}
                   </DialogDescription>
                 </DialogHeader>
@@ -1961,7 +2857,6 @@ export function AdminPanel({
                   <Button
                     variant="outline"
                     onClick={() => setDeleteDialogOpen(false)}
-                    className="bg-background border-border text-foreground hover:bg-muted"
                   >
                     {t.cancel}
                   </Button>
@@ -1969,14 +2864,10 @@ export function AdminPanel({
                     variant="destructive"
                     onClick={deleteUser}
                     disabled={updateLoading === "delete"}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   >
                     {updateLoading === "delete" ? (
                       <>
-                        <svg className="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24">
-                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                          <path fill="currentColor" d="M4 12a8 8 0 018-8v8h-8z" />
-                        </svg>
+                        <Loader2 className="h-4 w-4 animate-spin" />
                         {t.deleting}
                       </>
                     ) : (
@@ -1992,19 +2883,16 @@ export function AdminPanel({
               open={notificationDialogOpen}
               onOpenChange={setNotificationDialogOpen}
             >
-              <DialogContent className="bg-card border-border">
+              <DialogContent>
                 <DialogHeader>
-                  <DialogTitle className="text-foreground">
+                  <DialogTitle>
                     {t.sendNotification}
                   </DialogTitle>
                 </DialogHeader>
 
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label
-                      htmlFor="notificationTitle"
-                      className="text-foreground"
-                    >
+                    <Label htmlFor="notificationTitle">
                       {t.notificationTitle}
                     </Label>
                     <Input
@@ -2017,14 +2905,10 @@ export function AdminPanel({
                           title: e.target.value,
                         }))
                       }
-                      className="bg-background border-border text-foreground"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label
-                      htmlFor="notificationMessage"
-                      className="text-foreground"
-                    >
+                    <Label htmlFor="notificationMessage">
                       {t.notificationMessage}
                     </Label>
                     <Textarea
@@ -2038,14 +2922,10 @@ export function AdminPanel({
                         }))
                       }
                       rows={4}
-                      className="bg-background border-border text-foreground"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label
-                      htmlFor="recipientType"
-                      className="text-foreground"
-                    >
+                    <Label htmlFor="recipientType">
                       {t.recipientType}
                     </Label>
                     <Select
@@ -2057,27 +2937,24 @@ export function AdminPanel({
                         }))
                       }
                     >
-                      <SelectTrigger className="bg-background border-border text-foreground">
+                      <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-card shadow-lg z-50 rounded-lg">
-                        <SelectItem value="all" className="text-foreground">
+                      <SelectContent>
+                        <SelectItem value="all">
                           {t.allUsers}
                         </SelectItem>
-                        <SelectItem value="technicians" className="text-foreground">
+                        <SelectItem value="technicians">
                           {t.allTechnicians}
                         </SelectItem>
-                        <SelectItem value="citizens" className="text-foreground">
+                        <SelectItem value="citizens">
                           {t.allCitizens}
                         </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label
-                      htmlFor="priority"
-                      className="text-foreground"
-                    >
+                    <Label htmlFor="priority">
                       {t.priority}
                     </Label>
                     <Select
@@ -2089,15 +2966,15 @@ export function AdminPanel({
                         }))
                       }
                     >
-                      <SelectTrigger className="bg-background border-border text-foreground">
+                      <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-card shadow-lg z-50 rounded-lg">
-                        <SelectItem value="low" className="text-foreground">{t.low}</SelectItem>
-                        <SelectItem value="medium" className="text-foreground">
+                      <SelectContent>
+                        <SelectItem value="low">{t.low}</SelectItem>
+                        <SelectItem value="medium">
                           {t.medium}
                         </SelectItem>
-                        <SelectItem value="high" className="text-foreground">{t.high}</SelectItem>
+                        <SelectItem value="high">{t.high}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -2107,7 +2984,6 @@ export function AdminPanel({
                   <Button
                     variant="outline"
                     onClick={() => setNotificationDialogOpen(false)}
-                    className="bg-background border-border text-foreground hover:bg-muted"
                   >
                     {t.cancel}
                   </Button>
@@ -2118,14 +2994,10 @@ export function AdminPanel({
                       !notificationForm.title ||
                       !notificationForm.message
                     }
-                    className="bg-primary text-white hover:bg-primary/90"
                   >
                     {updateLoading === "notification" ? (
                       <>
-                        <svg className="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24">
-                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                          <path fill="currentColor" d="M4 12a8 8 0 018-8v8h-8z" />
-                        </svg>
+                        <Loader2 className="h-4 w-4 animate-spin" />
                         {t.sending}
                       </>
                     ) : (
@@ -2135,9 +3007,6 @@ export function AdminPanel({
                 </DialogFooter>
               </DialogContent>
             </Dialog>
-          </div>
-        </div>
-      </div>
-    </>
+    </div>
   );
 }

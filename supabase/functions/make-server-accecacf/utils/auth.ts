@@ -16,3 +16,21 @@ export async function getAuthenticatedUser(c: AppContext) {
 
   return data.user
 }
+
+// Returns the organization a user belongs to, or null for the public city
+// tenant. Used to scope every multi-tenant query/mutation.
+export function getOrganizationId(user: any): string | null {
+  return user.user_metadata?.organizationId ?? null
+}
+
+// Best-effort tenant scope for endpoints that may be called without
+// authentication (e.g. the AR camera's "nearby issues" overlay). Falls back
+// to the public city tenant (null) when no valid session is present.
+export async function getRequestOrganizationId(c: AppContext): Promise<string | null> {
+  try {
+    const user = await getAuthenticatedUser(c)
+    return getOrganizationId(user)
+  } catch {
+    return null
+  }
+}

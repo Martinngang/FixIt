@@ -18,9 +18,19 @@ export async function updateProfile(c: AppContext) {
   try {
     const user = await getAuthenticatedUser(c)
 
-    const { name, phone, address } = await c.req.json()
+    const { name, phone, address, availability, location } = await c.req.json()
 
-    const updatedUser = await profileModel.updateProfile(user.id, user, { name, phone, address })
+    if (availability !== undefined && !['available', 'busy', 'off_duty'].includes(availability)) {
+      throw new ValidationError('availability must be one of: available, busy, off_duty')
+    }
+
+    if (location !== undefined && location !== null) {
+      if (typeof location.lat !== 'number' || typeof location.lng !== 'number') {
+        throw new ValidationError('location must be an object with numeric lat and lng')
+      }
+    }
+
+    const updatedUser = await profileModel.updateProfile(user.id, user, { name, phone, address, availability, location })
     return c.json({ success: true, user: updatedUser })
   } catch (error) {
     return handleError(c, error, 'Failed to update profile')

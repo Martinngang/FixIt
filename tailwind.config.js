@@ -1,119 +1,124 @@
 /** @type {import('tailwindcss').Config} */
-module.exports = {
+export default {
+  darkMode: 'class',
   content: [
-    "./src/**/*.{js,jsx,ts,tsx}",
+    './index.html',
+    './src/**/*.{ts,tsx}',
+    './components/**/*.{ts,tsx}',
   ],
-  darkMode: 'class', // Enables dark mode via class (e.g., adding 'dark' to <html>)
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        display: ['Outfit', 'Inter', 'system-ui', 'sans-serif'],
+      },
       colors: {
-        background: {
-          DEFAULT: '#F8FAFC', // Light theme background (slate-50)
-          dark: '#0F172A', // Dark theme background (slate-950)
+        brand: {
+          50: '#EEF2FF',
+          100: '#E0E7FF',
+          200: '#C7D2FE',
+          300: '#A5B4FC',
+          400: '#818CF8',
+          500: '#6366F1',
+          600: '#4F46E5',
+          700: '#4338CA',
+          800: '#3730A3',
+          900: '#312E81',
         },
+        // Semantic shadcn-style tokens. Values come from HSL custom
+        // properties in src/styles/theme.css (:root / .dark), so these
+        // utilities (bg-card, bg-accent, ring-ring, bg-success, etc.)
+        // automatically respond to the dark-mode class and support
+        // Tailwind's /opacity modifiers.
+        background: 'hsl(var(--background) / <alpha-value>)',
+        foreground: 'hsl(var(--foreground) / <alpha-value>)',
         card: {
-          DEFAULT: '#FFFFFF', // Light theme card background
-          dark: '#1E293B', // Dark theme card background
+          DEFAULT: 'hsl(var(--card) / <alpha-value>)',
+          foreground: 'hsl(var(--card-foreground) / <alpha-value>)',
         },
-        foreground: {
-          DEFAULT: '#1E293B', // Light theme text (slate-800)
-          dark: '#F1F5F9', // Dark theme text (slate-100)
-        },
-        'muted-foreground': {
-          DEFAULT: '#64748B', // Light theme muted text (slate-500)
-          dark: '#94A3B8', // Dark theme muted text (slate-400)
+        popover: {
+          DEFAULT: 'hsl(var(--popover) / <alpha-value>)',
+          foreground: 'hsl(var(--popover-foreground) / <alpha-value>)',
         },
         primary: {
-          DEFAULT: '#2563EB', // Blue-600 for primary elements
-          dark: '#3B82F6', // Blue-500 for dark mode (slightly lighter)
+          DEFAULT: 'hsl(var(--primary) / <alpha-value>)',
+          foreground: 'hsl(var(--primary-foreground) / <alpha-value>)',
         },
-        border: {
-          DEFAULT: '#E2E8F0', // Light theme border (slate-200)
-          dark: '#334155', // Dark theme border (slate-700)
+        secondary: {
+          DEFAULT: 'hsl(var(--secondary) / <alpha-value>)',
+          foreground: 'hsl(var(--secondary-foreground) / <alpha-value>)',
         },
         muted: {
-          DEFAULT: '#F1F5F9', // Light theme muted background (slate-100)
-          dark: '#1E293B', // Dark theme muted background (slate-800)
+          DEFAULT: 'hsl(var(--muted) / <alpha-value>)',
+          foreground: 'hsl(var(--muted-foreground) / <alpha-value>)',
         },
-        blue: {
-          50: '#EFF6FF',
-          100: '#DBEAFE',
-          200: '#BFDBFE',
-          400: '#60A5FA',
-          500: '#3B82F6',
-          600: '#2563EB',
-          700: '#1D4ED8',
-          800: '#1E40AF',
-          900: '#1E3A8A',
+        accent: {
+          DEFAULT: 'hsl(var(--accent) / <alpha-value>)',
+          foreground: 'hsl(var(--accent-foreground) / <alpha-value>)',
         },
-        purple: {
-          50: '#F5F3FF',
-          100: '#EDE9FE',
-          200: '#DDD6FE',
-          400: '#A78BFA',
-          500: '#8B5CF6',
-          600: '#7C3AED',
-          700: '#6D28D9',
-          800: '#5B21B6',
-          900: '#4C1D95',
+        destructive: {
+          DEFAULT: 'hsl(var(--destructive) / <alpha-value>)',
+          foreground: 'hsl(var(--destructive-foreground) / <alpha-value>)',
         },
-        green: {
-          50: '#F0FDF4',
-          100: '#DCFCE7',
-          200: '#BBF7D0',
-          400: '#4ADE80',
-          500: '#22C55E',
-          600: '#16A34A',
-          700: '#15803D',
-          800: '#166534',
-          900: '#14532D',
+        success: {
+          DEFAULT: 'hsl(var(--success) / <alpha-value>)',
+          foreground: 'hsl(var(--success-foreground) / <alpha-value>)',
         },
-        orange: {
-          50: '#FFF7ED',
-          100: '#FFEDD5',
-          200: '#FED7AA',
-          400: '#FB923C',
-          500: '#F97316',
-          600: '#EA580C',
-          700: '#C2410C',
-          800: '#9A3412',
-          900: '#7C2D12',
+        warning: {
+          DEFAULT: 'hsl(var(--warning) / <alpha-value>)',
+          foreground: 'hsl(var(--warning-foreground) / <alpha-value>)',
         },
-        yellow: {
-          50: '#FEFCE8',
-          100: '#FEF9C3',
-          200: '#FEF08A',
-          400: '#FACC15',
-          500: '#EAB308',
-          600: '#CA8A04',
-          700: '#A16207',
-          800: '#854D0E',
-          900: '#713F12',
+        info: {
+          DEFAULT: 'hsl(var(--info) / <alpha-value>)',
+          foreground: 'hsl(var(--info-foreground) / <alpha-value>)',
         },
-      },
-      backgroundImage: {
-        'grid-slate-200': "url('/grid-light.svg')",
-        'grid-slate-700': "url('/grid-dark.svg')",
+        border: 'hsl(var(--border) / <alpha-value>)',
+        input: 'hsl(var(--input) / <alpha-value>)',
+        'input-background': 'hsl(var(--input-background) / <alpha-value>)',
+        ring: 'hsl(var(--ring) / <alpha-value>)',
       },
       boxShadow: {
-        'xl': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-        '2xl': '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-      },
-      animation: {
-        pulse: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-        bounce: 'bounce 1s infinite',
+        glow: '0 0 24px -4px rgba(99, 102, 241, 0.55)',
+        'glow-lg': '0 0 48px -8px rgba(99, 102, 241, 0.45)',
+        'glow-cyan': '0 0 24px -4px rgba(34, 211, 238, 0.5)',
       },
       keyframes: {
-        pulse: {
+        'fade-in': { '0%': { opacity: 0 }, '100%': { opacity: 1 } },
+        'fade-in-up': {
+          '0%': { opacity: 0, transform: 'translateY(16px)' },
+          '100%': { opacity: 1, transform: 'translateY(0)' },
+        },
+        'scale-in': {
+          '0%': { opacity: 0, transform: 'scale(0.95)' },
+          '100%': { opacity: 1, transform: 'scale(1)' },
+        },
+        float: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-10px)' },
+        },
+        shimmer: {
+          '0%': { backgroundPosition: '-700px 0' },
+          '100%': { backgroundPosition: '700px 0' },
+        },
+        'glow-pulse': {
           '0%, 100%': { opacity: 1 },
-          '50%': { opacity: 0.5 },
+          '50%': { opacity: 0.6 },
         },
-        bounce: {
-          '0%, 100%': { transform: 'translateY(-5%)' },
-          '50%': { transform: 'translateY(0)' },
+        'gradient-x': {
+          '0%, 100%': { backgroundPosition: '0% 50%' },
+          '50%': { backgroundPosition: '100% 50%' },
         },
+      },
+      animation: {
+        'fade-in': 'fade-in 0.6s ease-out both',
+        'fade-in-up': 'fade-in-up 0.7s ease-out both',
+        'scale-in': 'scale-in 0.3s ease-out both',
+        float: 'float 6s ease-in-out infinite',
+        shimmer: 'shimmer 2.5s linear infinite',
+        'glow-pulse': 'glow-pulse 2.5s ease-in-out infinite',
+        'gradient-x': 'gradient-x 8s ease infinite',
       },
     },
   },
   plugins: [],
-}
+};

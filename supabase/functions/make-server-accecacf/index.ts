@@ -12,6 +12,11 @@ import * as userController from './controllers/userController.ts'
 import * as notificationController from './controllers/notificationController.ts'
 import * as profileController from './controllers/profileController.ts'
 import * as ideaController from './controllers/ideaController.ts'
+import * as inventoryController from './controllers/inventoryController.ts'
+import * as organizationController from './controllers/organizationController.ts'
+import * as marketplaceController from './controllers/marketplaceController.ts'
+import * as billingController from './controllers/billingController.ts'
+import * as smsController from './controllers/smsController.ts'
 import { logger } from './utils/logger.ts'
 import { handleError } from './utils/errors.ts'
 import type { AppContext, AppEnv } from './utils/types.ts'
@@ -60,12 +65,16 @@ app.post('/make-server-accecacf/issues/:id/photo', issueController.uploadPhoto)
 app.get('/make-server-accecacf/issues', issueController.getAllIssues)
 app.get('/make-server-accecacf/issues/:id', issueController.getIssue)
 app.get('/make-server-accecacf/my-issues', issueController.getUserIssues)
+app.get('/make-server-accecacf/my-impact', issueController.getUserImpact)
 app.get('/make-server-accecacf/my-tasks', issueController.getTechnicianTasks)
 app.patch('/make-server-accecacf/issues/:id/status', issueController.updateStatus)
 app.get('/make-server-accecacf/stats', issueController.getStats)
 app.get('/make-server-accecacf/analytics', issueController.getAnalytics)
 app.get('/make-server-accecacf/hotspots', issueController.getHotspots)
 app.post('/make-server-accecacf/issues/:id/assign', issueController.assignIssue)
+app.get('/make-server-accecacf/issues/:id/suggest-technicians', issueController.getSuggestedTechnicians)
+app.post('/make-server-accecacf/issues/:id/request-parts', issueController.requestParts)
+app.post('/make-server-accecacf/issues/voice-parse', issueController.parseVoiceReport)
 
 // Comment routes
 app.get('/make-server-accecacf/issues/:id/comments', commentController.getComments)
@@ -107,6 +116,48 @@ app.delete('/make-server-accecacf/ideas/:id', ideaController.deleteIdea)
 app.get('/make-server-accecacf/ideas/:id/comments', ideaController.getComments)
 app.post('/make-server-accecacf/ideas/:id/comments', ideaController.createComment)
 app.delete('/make-server-accecacf/ideas/:id/comments/:commentId', ideaController.deleteComment)
+
+// Inventory & Supply Chain routes
+app.get('/make-server-accecacf/inventory', inventoryController.getAllItems)
+app.post('/make-server-accecacf/inventory', inventoryController.createItem)
+app.get('/make-server-accecacf/inventory/:id', inventoryController.getItem)
+app.patch('/make-server-accecacf/inventory/:id', inventoryController.updateItem)
+app.delete('/make-server-accecacf/inventory/:id', inventoryController.deleteItem)
+app.post('/make-server-accecacf/inventory/:id/adjust', inventoryController.adjustStock)
+app.get('/make-server-accecacf/reorders', inventoryController.getAllReorders)
+app.patch('/make-server-accecacf/reorders/:id/status', inventoryController.updateReorderStatus)
+
+// Organization routes (B2B multi-tenancy)
+app.get('/make-server-accecacf/organizations/me', organizationController.getMyOrganization)
+app.post('/make-server-accecacf/organizations', organizationController.createOrganization)
+app.post('/make-server-accecacf/organizations/join', organizationController.joinOrganization)
+app.patch('/make-server-accecacf/organizations/me', organizationController.updateOrganization)
+app.post('/make-server-accecacf/organizations/me/regenerate-code', organizationController.regenerateJoinCode)
+
+// Organization subscription billing
+app.get('/make-server-accecacf/organizations/me/billing', billingController.getBillingInfo)
+app.post('/make-server-accecacf/organizations/me/billing/checkout', billingController.startSubscriptionCheckout)
+app.post('/make-server-accecacf/organizations/me/billing/portal', billingController.openBillingPortal)
+app.post('/make-server-accecacf/webhooks/stripe-billing', billingController.handleBillingWebhook)
+
+// SMS-based issue reporting (Twilio)
+app.post('/make-server-accecacf/webhooks/twilio-sms', smsController.handleIncomingSms)
+
+// Marketplace (Phase 11)
+app.post('/make-server-accecacf/marketplace/apply', marketplaceController.applyAsContractor)
+app.get('/make-server-accecacf/marketplace/contractors', marketplaceController.listContractorApplications)
+app.patch('/make-server-accecacf/marketplace/contractors/:id/status', marketplaceController.setContractorStatus)
+app.post('/make-server-accecacf/marketplace/stripe/onboard', marketplaceController.onboardContractor)
+app.get('/make-server-accecacf/marketplace/stripe/status', marketplaceController.getContractorStripeStatus)
+app.post('/make-server-accecacf/marketplace/stripe/disconnect', marketplaceController.disconnectContractorStripe)
+app.get('/make-server-accecacf/marketplace/jobs', marketplaceController.getOpenJobs)
+app.post('/make-server-accecacf/marketplace/jobs/:id/claim', marketplaceController.claimJob)
+app.get('/make-server-accecacf/marketplace/my-jobs', marketplaceController.getMyMarketplaceJobs)
+app.post('/make-server-accecacf/issues/:id/marketplace', marketplaceController.postToMarketplace)
+app.delete('/make-server-accecacf/issues/:id/marketplace', marketplaceController.unpostFromMarketplace)
+app.post('/make-server-accecacf/marketplace/jobs/:id/pay', marketplaceController.createCheckoutForJob)
+app.post('/make-server-accecacf/marketplace/jobs/:id/sync-payment', marketplaceController.syncPaymentStatus)
+app.post('/make-server-accecacf/webhooks/stripe', marketplaceController.handleStripeWebhook)
 
 // User routes
 app.get('/make-server-accecacf/users', userController.getUsers)

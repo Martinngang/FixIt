@@ -21,4 +21,6 @@ export interface User {
   created_at?: string;
   last_sign_in_at?: string;
   reputation?: UserReputation;
+  marketplaceStatus?: 'pending' | 'approved' | 'rejected';
+  stripeOnboardingComplete?: boolean;
 }

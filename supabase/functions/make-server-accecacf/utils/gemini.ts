@@ -92,3 +92,80 @@ export async function classifyIssue(title: string, description: string): Promise
     return null
   }
 }
+
+export interface VoiceReportExtraction {
+  title: string
+  description: string
+  category: typeof ISSUE_CATEGORIES[number]
+  location: string
+  priority: typeof ISSUE_PRIORITIES[number]
+}
+
+// Turns a raw speech-to-text transcript (from a citizen describing an issue
+// out loud) into structured report fields. Returns null (rather than
+// throwing) on any failure so the client can fall back to dropping the raw
+// transcript into the description field for manual editing.
+export async function extractIssueFromTranscript(transcript: string): Promise<VoiceReportExtraction | null> {
+  const apiKey = Deno.env.get('GEMINI_API_KEY')
+  if (!apiKey) return null
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: `A citizen reported a civic issue by speaking out loud, and their speech was transcribed by speech-to-text software. Extract structured fields for a municipal issue-tracking form from this transcript.\n\nTranscript: "${transcript}"\n\nProduce: a short "title" (a few words summarizing the issue), a cleaned-up "description" (rewrite the transcript as clear sentences, removing filler words like "um" or "uh" without inventing new facts), the single best-matching "category", a "location" string containing any street names, intersections, or landmarks mentioned (use an empty string if no location was mentioned), and the appropriate "priority" based on the urgency expressed.`
+            }]
+          }],
+          generationConfig: {
+            responseMimeType: 'application/json',
+            responseSchema: {
+              type: 'OBJECT',
+              properties: {
+                title: { type: 'STRING' },
+                description: { type: 'STRING' },
+                category: { type: 'STRING', enum: [...ISSUE_CATEGORIES] },
+                location: { type: 'STRING' },
+                priority: { type: 'STRING', enum: [...ISSUE_PRIORITIES] },
+              },
+              required: ['title', 'description', 'category', 'location', 'priority'],
+            },
+          },
+        }),
+      }
+    )
+
+    if (!response.ok) {
+      logger.warn('Gemini voice extraction request failed', { status: response.status, body: await response.text() })
+      return null
+    }
+
+    const data = await response.json()
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text
+    if (!text) {
+      logger.warn('Gemini voice extraction returned no content', { data })
+      return null
+    }
+
+    const parsed = JSON.parse(text)
+    if (
+      typeof parsed.title !== 'string' ||
+      typeof parsed.description !== 'string' ||
+      !ISSUE_CATEGORIES.includes(parsed.category) ||
+      typeof parsed.location !== 'string' ||
+      !ISSUE_PRIORITIES.includes(parsed.priority)
+    ) {
+      logger.warn('Gemini voice extraction returned an unexpected shape', { parsed })
+      return null
+    }
+
+    return parsed as VoiceReportExtraction
+  } catch (error) {
+    logger.warn('Gemini voice extraction error', { error: serializeError(error) })
+    return null
+  }
+}

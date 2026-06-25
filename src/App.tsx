@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
 import { Routes, Route, Navigate, NavLink, useLocation } from 'react-router-dom'
 import { Auth } from '../components/Auth'
 import { LandingPage } from '../components/LandingPage'
@@ -11,12 +12,26 @@ import { TechnicianPanel } from '../components/TechnicianPanel'
 import { NotificationsPanel } from '../components/NotificationsPanel'
 import { Profile } from '../components/Profile'
 import { Community } from '../components/Community'
+import { Inventory } from '../components/Inventory'
+import { MarketplacePanel } from '../components/MarketplacePanel'
 import { ToastProvider, useToast } from '../components/ToastContext'
 import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
+import { Avatar, AvatarFallback } from '../components/ui/avatar'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog'
-import { User, MapPin, Settings, LogOut, Globe, Camera, Moon, Sun, Wrench, Bell, Users, UserCog, Menu, X, UserCircle, Heart } from 'lucide-react'
+import { Sheet, SheetContent, SheetHeader, SheetFooter, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '../components/ui/dropdown-menu'
+import { User, MapPin, Settings, LogOut, Globe, Camera, Moon, Sun, Wrench, Bell, Users, UserCog, Menu, X, UserCircle, Heart, Boxes, Store, ChevronDown, MoreHorizontal } from 'lucide-react'
 import { supabase } from '../utils/supabase/client'
 // import './index.css'
 
@@ -31,8 +46,10 @@ const translations = {
     technician: 'Field Work',
     admin: 'Admin Panel',
     userManagement: 'Users',
+    inventory: 'Inventory',
     notifications: 'Notifications',
     community: 'Community',
+    marketplace: 'Marketplace',
     signOut: 'Sign Out',
     loading: 'Loading CIRT...',
     toggleTheme: 'Toggle theme',
@@ -41,7 +58,8 @@ const translations = {
     technicianRole: 'Technician',
     adminRole: 'Administrator',
     switchRole: 'Switch Role (Testing)',
-    roleUpdated: 'Role updated successfully'
+    roleUpdated: 'Role updated successfully',
+    more: 'More'
   },
   fr: {
     appTitle: 'CIRT',
@@ -53,8 +71,10 @@ const translations = {
     technician: 'Travail terrain',
     admin: 'Panneau admin',
     userManagement: 'Utilisateurs',
+    inventory: 'Inventaire',
     notifications: 'Notifications',
     community: 'Communauté',
+    marketplace: 'Marché',
     signOut: 'Déconnexion',
     loading: 'Chargement de CIRT...',
     toggleTheme: 'Basculer le thème',
@@ -63,7 +83,8 @@ const translations = {
     technicianRole: 'Technicien',
     adminRole: 'Administrateur',
     switchRole: 'Changer de rôle (Test)',
-    roleUpdated: 'Rôle mis à jour avec succès'
+    roleUpdated: 'Rôle mis à jour avec succès',
+    more: 'Plus'
   }
 }
 
@@ -149,8 +170,7 @@ function AppContent() {
   const getTabsForRole = (role: string) => {
     const baseTabs = [
       { id: 'dashboard', label: t.dashboard, icon: MapPin },
-      { id: 'community', label: t.community, icon: Heart },
-      { id: 'notifications', label: t.notifications, icon: Bell }
+      { id: 'community', label: t.community, icon: Heart }
     ]
 
     switch (role) {
@@ -158,14 +178,14 @@ function AppContent() {
         return [
           ...baseTabs,
           { id: 'admin', label: t.admin, icon: Settings },
-          { id: 'users', label: t.userManagement, icon: Users }
+          { id: 'users', label: t.userManagement, icon: Users },
+          { id: 'inventory', label: t.inventory, icon: Boxes }
         ]
       case 'technician':
         return [
           { id: 'technician', label: t.technician, icon: Wrench },
           { id: 'my-tasks', label: t.myTasks, icon: User },
-          { id: 'community', label: t.community, icon: Heart },
-          { id: 'notifications', label: t.notifications, icon: Bell }
+          { id: 'community', label: t.community, icon: Heart }
         ]
       default:
         return [
@@ -177,6 +197,21 @@ function AppContent() {
   }
 
   const availableTabs = getTabsForRole(userRole)
+  // Cap primary nav slots at 5 so the pill nav/bottom tab bar can't grow
+  // unbounded as roles gain more tabs - the rest surface in the sandwich
+  // Sheet menu instead, alongside Marketplace/Notifications which always
+  // live there regardless of device.
+  const MAX_PRIMARY_TABS = 5
+  const visibleTabs = availableTabs.slice(0, MAX_PRIMARY_TABS)
+  const overflowTabs = availableTabs.slice(MAX_PRIMARY_TABS)
+  // Marketplace/Notifications are deliberately kept out of the primary
+  // pill nav / bottom tab bar on every device - they only surface inside
+  // the hamburger Sheet.
+  const sidebarOnlyTabs = [
+    { id: 'notifications', label: t.notifications, icon: Bell },
+    ...(userRole !== 'admin' ? [{ id: 'marketplace', label: t.marketplace, icon: Store }] : [])
+  ]
+  const sheetNavTabs = [...overflowTabs, ...sidebarOnlyTabs]
   const defaultPath = userRole === 'technician' ? '/technician' : '/dashboard'
 
   // Public Open Data dashboard - accessible without signing in.
@@ -193,10 +228,15 @@ function AppContent() {
 
   if (loading) {
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
-            <p className="text-foreground">{t.loading}</p>
+        <div className="min-h-screen bg-background bg-gradient-mesh flex items-center justify-center font-sans">
+          <div className="text-center animate-fade-in">
+            <div className="relative mx-auto mb-6 h-16 w-16">
+              <div className="absolute inset-0 rounded-2xl bg-gradient-brand opacity-70 blur-xl animate-glow-pulse" />
+              <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-brand shadow-glow-lg">
+                <img src="/logo.svg" alt="" className="h-9 w-9" />
+              </div>
+            </div>
+            <p className="font-display text-muted-foreground">{t.loading}</p>
           </div>
         </div>
     )
@@ -216,31 +256,33 @@ function AppContent() {
 
   if (!user && showAuth) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-orange-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-          <div className="absolute inset-0 bg-black/20 dark:bg-black/40 flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto border border-slate-200 dark:border-slate-700">
-              <div className="p-6">
+      <div className="min-h-screen bg-background bg-gradient-mesh flex items-center justify-center p-4 font-sans">
+          <div className="w-full max-w-md animate-scale-in">
+            <div className="glass-card rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto border border-border">
+              <div className="p-6 sm:p-8">
                 <div className="flex justify-between items-center mb-6">
-                  <div className="flex items-center space-x-3">
-                    <img src="/logo.svg" alt="CIRT Logo" className="h-10 w-10" />
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-brand shadow-glow">
+                      <img src="/logo.svg" alt="" className="h-6 w-6" />
+                    </div>
                     <div>
-                      <h1 className="text-xl text-foreground">{t.appTitle}</h1>
+                      <h1 className="font-display text-xl font-bold text-foreground">{t.appTitle}</h1>
                       <p className="text-sm text-muted-foreground">{t.appSubtitle}</p>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={toggleTheme}
                       className="text-muted-foreground hover:text-foreground"
                       title={t.toggleTheme}
                     >
                       {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                     </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={() => setShowAuth(false)}
                       className="text-muted-foreground hover:text-foreground"
                     >
@@ -257,265 +299,324 @@ function AppContent() {
   }
 
   return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
+      <div className="min-h-screen bg-background font-sans transition-colors duration-300">
         {/* Header */}
-        <header className="bg-white dark:bg-slate-900 shadow-sm border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40">
+        <header className="glass-nav sticky top-0 z-40">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <div className="flex items-center space-x-3">
-                <img src="/logo.svg" alt="CIRT Logo" className="h-8 w-8" />
-                <div>
-                  <h1 className="text-xl font-bold text-foreground">{t.appTitle}</h1>
-                  <p className="text-sm text-muted-foreground">{t.appSubtitle}</p>
+            <div className="flex items-center justify-between gap-3 h-16">
+              {/* Logo */}
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-brand shadow-glow">
+                  <img src="/logo.svg" alt="" className="h-6 w-6" />
+                </div>
+                <div className="min-w-0">
+                  <h1 className="font-display text-lg sm:text-xl font-bold leading-tight">
+                    <span className="text-gradient">{t.appTitle}</span>
+                  </h1>
+                  <p className="hidden sm:block text-xs text-muted-foreground truncate">{t.appSubtitle}</p>
                 </div>
               </div>
-              
-              {/* Desktop Navigation */}
-              <div className="hidden md:flex items-center space-x-4">
-                <Button 
-                  variant="ghost" 
-                  size="sm"
+
+              {/* Desktop pill navigation */}
+              <nav className="hidden md:flex flex-1 items-center justify-center gap-1 rounded-full bg-muted/50 p-1 ring-1 ring-border/50 shadow-sm overflow-x-auto">
+                {visibleTabs.map((tab) => (
+                  <NavLink
+                    key={tab.id}
+                    to={`/${tab.id}`}
+                    className={({ isActive }) =>
+                      `flex items-center gap-2 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-medium transition-all duration-200 ${
+                        isActive
+                          ? 'bg-gradient-brand text-white shadow-lg shadow-brand-500/25'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-background/80'
+                      }`
+                    }
+                  >
+                    <tab.icon className="h-4 w-4" />
+                    <span>{tab.label}</span>
+                  </NavLink>
+                ))}
+                {overflowTabs.length > 0 && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        className={`flex items-center gap-2 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-medium transition-all duration-200 ${
+                          overflowTabs.some((tab) => location.pathname === `/${tab.id}`)
+                            ? 'bg-gradient-brand text-white shadow-lg shadow-brand-500/25'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-background/80'
+                        }`}
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                        <span>{t.more}</span>
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="center" className="min-w-[160px]">
+                      {overflowTabs.map((tab) => (
+                        <DropdownMenuItem key={tab.id} asChild>
+                          <NavLink to={`/${tab.id}`} className="gap-2">
+                            <tab.icon className="h-4 w-4" />
+                            {tab.label}
+                          </NavLink>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </nav>
+
+              {/* Desktop controls */}
+              <div className="hidden md:flex items-center gap-1.5 shrink-0">
+                {/* Utility cluster */}
+                <div className="flex items-center gap-0.5 rounded-full bg-muted/50 p-1 ring-1 ring-border/50">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={toggleTheme}
+                    className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-background/80"
+                    title={t.toggleTheme}
+                  >
+                    {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                  </Button>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-background/80"
+                        title={language.toUpperCase()}
+                      >
+                        <Globe className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="min-w-[140px]">
+                      <DropdownMenuRadioGroup value={language} onValueChange={(value) => setLanguage(value as 'en' | 'fr')}>
+                        <DropdownMenuRadioItem value="en">English</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="fr">Français</DropdownMenuRadioItem>
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-background/80"
+                        title={t.switchRole}
+                      >
+                        <UserCog className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="min-w-[180px]">
+                      <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">{t.switchRole}</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuRadioGroup value={userRole} onValueChange={handleRoleChange}>
+                        <DropdownMenuRadioItem value="citizen" className="gap-2">
+                          <User className="h-4 w-4" />
+                          {t.citizen}
+                        </DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="technician" className="gap-2">
+                          <Wrench className="h-4 w-4" />
+                          {t.technicianRole}
+                        </DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="admin" className="gap-2">
+                          <Settings className="h-4 w-4" />
+                          {t.adminRole}
+                        </DropdownMenuRadioItem>
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setMobileMenuOpen(true)}
+                    className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-background/80"
+                    title={t.more}
+                  >
+                    <Menu className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                {/* Divider */}
+                <div className="h-8 w-px bg-border" />
+
+                {/* Identity cluster */}
+                <Dialog open={profileDialogOpen} onOpenChange={setProfileDialogOpen}>
+                  <DialogTrigger asChild>
+                    <button className="group flex items-center gap-2.5 rounded-full pl-1 pr-2.5 py-1 transition-all hover:bg-muted/60">
+                      <div className="relative shrink-0">
+                        <Avatar className="h-9 w-9 ring-2 ring-primary/20 ring-offset-2 ring-offset-background transition-all group-hover:ring-primary/40">
+                          <AvatarFallback className="text-sm">{userName.charAt(0).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-success ring-2 ring-card" />
+                      </div>
+                      <div className="hidden lg:flex flex-col items-start leading-tight">
+                        <span className="text-sm font-medium text-foreground">{userName}</span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-muted-foreground">
+                            {t[`${userRole}Role` as keyof typeof t] || userRole}
+                          </span>
+                          {tempRole && (
+                            <Badge variant="warning" className="px-1.5 py-0 text-[10px]">Test</Badge>
+                          )}
+                        </div>
+                      </div>
+                      <ChevronDown className="hidden lg:block h-4 w-4 text-muted-foreground transition-transform duration-200 group-hover:translate-y-0.5" />
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Profile</DialogTitle>
+                    </DialogHeader>
+                    <Profile session={session} language={language} />
+                  </DialogContent>
+                </Dialog>
+              </div>
+
+              {/* Mobile controls */}
+              <div className="flex md:hidden items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={toggleTheme}
                   className="text-muted-foreground hover:text-foreground"
                   title={t.toggleTheme}
                 >
-                  {isDarkMode ? <Sun className="h-4 w-4 text-orange-400" /> : <Moon className="h-4 w-4 text-slate-600" />}
+                  {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                 </Button>
 
-                <Select value={userRole} onValueChange={handleRoleChange}>
-                  <SelectTrigger className="w-auto bg-background border-border text-foreground">
-                    <UserCog className="h-4 w-4 mr-2" />
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-card shadow-lg z-50 rounded-lg">
-                    <SelectItem value="citizen">
-                      <div className="flex items-center space-x-2">
-                        <User className="h-4 w-4" />
-                        <span>{t.citizen}</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="technician">
-                      <div className="flex items-center space-x-2">
-                        <Wrench className="h-4 w-4" />
-                        <span>{t.technicianRole}</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="admin">
-                      <div className="flex items-center space-x-2">
-                        <Settings className="h-4 w-4" />
-                        <span>{t.adminRole}</span>
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                  <SheetTrigger asChild>
+                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                      <Menu className="h-5 w-5" />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="right" className="w-[85%] sm:max-w-sm flex flex-col gap-0 p-0">
+                    <SheetHeader className="border-b border-border p-4">
+                      <SheetTitle className="font-display text-gradient">{t.appTitle}</SheetTitle>
+                      <SheetDescription>{t.appSubtitle}</SheetDescription>
+                    </SheetHeader>
 
-                <Select value={language} onValueChange={(value: 'en' | 'fr') => setLanguage(value)}>
-                  <SelectTrigger className="w-auto bg-background border-border text-foreground">
-                    <Globe className="h-4 w-4 mr-2" />
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-card shadow-lg z-50 rounded-lg">
-                    <SelectItem value="en">English</SelectItem>
-                    <SelectItem value="fr">Français</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <div className="flex items-center space-x-2">
-                  <Dialog open={profileDialogOpen} onOpenChange={setProfileDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-                        <UserCircle className="h-4 w-4" />
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                      <DialogHeader>
-                        <DialogTitle>Profile</DialogTitle>
-                      </DialogHeader>
-                      <Profile session={session} language={language} />
-                    </DialogContent>
-                  </Dialog>
-                  <div className="flex flex-col items-end">
-                    <span className="text-sm text-foreground">{userName}</span>
-                    <div className="flex items-center space-x-1">
-                      <Badge variant="outline" className="text-xs text-foreground border-border">
-                        {t[`${userRole}Role` as keyof typeof t] || userRole}
-                      </Badge>
-                      {tempRole && (
-                        <Badge variant="secondary" className="text-xs bg-muted text-muted-foreground">
-                          Testing
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                  <User className="h-4 w-4 text-muted-foreground" />
-                </div>
-                <Button 
-                  onClick={handleSignOut} 
-                  variant="ghost" 
-                  size="sm" 
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  <LogOut className="h-4 w-4 mr-2" />
-                  {t.signOut}
-                </Button>
-              </div>
-
-              {/* Mobile Menu Button */}
-              <div className="md:hidden">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-                </Button>
-              </div>
-            </div>
-
-            {/* Page Navigation */}
-            <nav className="hidden md:flex items-center space-x-1 h-12 border-t border-border overflow-x-auto">
-              {availableTabs.map((tab) => (
-                <NavLink
-                  key={tab.id}
-                  to={`/${tab.id}`}
-                  className={({ isActive }) =>
-                    `flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-                      isActive
-                        ? 'bg-primary text-white'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                    }`
-                  }
-                >
-                  <tab.icon className="h-4 w-4 mr-2" />
-                  {tab.label}
-                </NavLink>
-              ))}
-            </nav>
-
-            {/* Mobile Menu */}
-            {mobileMenuOpen && (
-              <div className="md:hidden bg-card border-t border-border px-6 py-4 shadow-lg rounded-b-lg z-50">
-                <div className="flex flex-col space-y-4">
-                  <nav className="flex flex-col space-y-1 pb-2 border-b border-border">
-                    {availableTabs.map((tab) => (
-                      <NavLink
-                        key={tab.id}
-                        to={`/${tab.id}`}
-                        onClick={() => setMobileMenuOpen(false)}
-                        className={({ isActive }) =>
-                          `flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                            isActive
-                              ? 'bg-primary text-white'
-                              : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                          }`
-                        }
-                      >
-                        <tab.icon className="h-4 w-4 mr-2" />
-                        {tab.label}
-                      </NavLink>
-                    ))}
-                  </nav>
-
-                  <Button
-                    variant="ghost"
-                    onClick={toggleTheme}
-                    className="justify-start text-muted-foreground hover:text-foreground"
-                  >
-                    {isDarkMode ? <Sun className="h-4 w-4 mr-2 text-orange-400" /> : <Moon className="h-4 w-4 mr-2 text-slate-600" />}
-                    {t.toggleTheme}
-                  </Button>
-
-                  <Select value={userRole} onValueChange={handleRoleChange}>
-                    <SelectTrigger className="w-full bg-background border-border text-foreground">
-                      <UserCog className="h-4 w-4 mr-2" />
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-card shadow-lg z-50 rounded-lg">
-                      <SelectItem value="citizen">
-                        <div className="flex items-center space-x-2">
-                          <User className="h-4 w-4" />
-                          <span>{t.citizen}</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="technician">
-                        <div className="flex items-center space-x-2">
-                          <Wrench className="h-4 w-4" />
-                          <span>{t.technicianRole}</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="admin">
-                        <div className="flex items-center space-x-2">
-                          <Settings className="h-4 w-4" />
-                          <span>{t.adminRole}</span>
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <Select value={language} onValueChange={(value: 'en' | 'fr') => setLanguage(value)}>
-                    <SelectTrigger className="w-full bg-background border-border text-foreground">
-                      <Globe className="h-4 w-4 mr-2" />
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-card shadow-lg z-50 rounded-lg">
-                      <SelectItem value="en">English</SelectItem>
-                      <SelectItem value="fr">Français</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <div className="flex items-center justify-between py-2">
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
+                    <div className="flex flex-col gap-4 p-4 overflow-y-auto flex-1">
+                      <button
                         onClick={() => {
                           setProfileDialogOpen(true)
                           setMobileMenuOpen(false)
                         }}
-                        className="text-muted-foreground hover:text-foreground"
+                        className="flex items-center gap-3 rounded-2xl bg-muted/60 p-3 text-left transition-colors hover:bg-muted"
                       >
-                        <UserCircle className="h-4 w-4 mr-2" />
-                        Profile
-                      </Button>
-                      <div className="flex flex-col">
-                        <span className="text-sm text-foreground">{userName}</span>
-                        <div className="flex items-center space-x-1">
-                          <Badge variant="outline" className="text-xs text-foreground border-border">
-                            {t[`${userRole}Role` as keyof typeof t] || userRole}
-                          </Badge>
-                          {tempRole && (
-                            <Badge variant="secondary" className="text-xs bg-muted text-muted-foreground">
-                              Testing
+                        <Avatar className="h-12 w-12">
+                          <AvatarFallback className="text-lg">{userName.charAt(0).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-foreground font-medium truncate">{userName}</span>
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <Badge variant="outline" className="text-xs">
+                              {t[`${userRole}Role` as keyof typeof t] || userRole}
                             </Badge>
-                          )}
+                            {tempRole && (
+                              <Badge variant="warning" className="text-xs">Testing</Badge>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  </div>
+                      </button>
 
-                  <Button 
-                    onClick={handleSignOut} 
-                    variant="ghost" 
-                    className="justify-start text-muted-foreground hover:text-foreground"
-                  >
-                    <LogOut className="h-4 w-4 mr-2" />
-                    {t.signOut}
-                  </Button>
-                </div>
+                      <div className="flex flex-col gap-2">
+                        <span className="px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                          {t.switchRole}
+                        </span>
+                        <Select value={userRole} onValueChange={handleRoleChange}>
+                          <SelectTrigger className="w-full gap-2 bg-muted/60 border-transparent">
+                            <UserCog className="h-4 w-4 text-muted-foreground" />
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="citizen">
+                              <div className="flex items-center gap-2">
+                                <User className="h-4 w-4" />
+                                <span>{t.citizen}</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="technician">
+                              <div className="flex items-center gap-2">
+                                <Wrench className="h-4 w-4" />
+                                <span>{t.technicianRole}</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="admin">
+                              <div className="flex items-center gap-2">
+                                <Settings className="h-4 w-4" />
+                                <span>{t.adminRole}</span>
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+
+                        <Select value={language} onValueChange={(value: 'en' | 'fr') => setLanguage(value)}>
+                          <SelectTrigger className="w-full gap-2 bg-muted/60 border-transparent">
+                            <Globe className="h-4 w-4 text-muted-foreground" />
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="en">English</SelectItem>
+                            <SelectItem value="fr">Français</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {sheetNavTabs.length > 0 && (
+                        <div className="flex flex-col gap-1">
+                          <span className="px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                            {t.more}
+                          </span>
+                          {sheetNavTabs.map((tab) => (
+                            <NavLink
+                              key={tab.id}
+                              to={`/${tab.id}`}
+                              onClick={() => setMobileMenuOpen(false)}
+                              className={({ isActive }) =>
+                                `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                                  isActive
+                                    ? 'bg-gradient-brand text-white shadow-md shadow-brand-500/25'
+                                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                                }`
+                              }
+                            >
+                              <tab.icon className="h-4 w-4" />
+                              {tab.label}
+                            </NavLink>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <SheetFooter className="border-t border-border p-4">
+                      <Button
+                        onClick={handleSignOut}
+                        variant="outline"
+                        className="w-full justify-center gap-2 border-destructive/30 text-destructive hover:bg-destructive/10"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        {t.signOut}
+                      </Button>
+                    </SheetFooter>
+                  </SheetContent>
+                </Sheet>
               </div>
-            )}
+            </div>
           </div>
         </header>
 
         {/* Main Content */}
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pb-28 md:pb-8">
           <Routes>
             <Route path="/" element={<Navigate to={defaultPath} replace />} />
             <Route path="/dashboard" element={<Dashboard session={session} language={language} />} />
             <Route path="/report" element={<ReportIssue session={session} language={language} />} />
             <Route path="/my-issues" element={<MyIssues session={session} language={language} tempRole={tempRole} />} />
             <Route path="/community" element={<Community session={session} language={language} userRole={userRole} tempRole={tempRole} />} />
+            <Route path="/marketplace" element={<MarketplacePanel session={session} language={language} />} />
             <Route path="/notifications" element={<NotificationsPanel session={session} language={language} userRole={userRole} tempRole={tempRole} />} />
             {userRole === 'technician' && (
               <>
@@ -527,11 +628,42 @@ function AppContent() {
               <>
                 <Route path="/admin" element={<AdminPanel session={session} language={language} tempRole={tempRole} />} />
                 <Route path="/users" element={<AdminPanel session={session} language={language} defaultView="users" tempRole={tempRole} />} />
+                <Route path="/inventory" element={<Inventory session={session} language={language} tempRole={tempRole} />} />
               </>
             )}
             <Route path="*" element={<Navigate to={defaultPath} replace />} />
           </Routes>
         </main>
+
+        {/* Mobile bottom tab bar */}
+        <nav className="glass-nav md:hidden fixed inset-x-0 bottom-0 z-40 border-t pb-[env(safe-area-inset-bottom)]">
+          <div className="flex items-stretch justify-around">
+            {visibleTabs.map((tab) => (
+              <NavLink
+                key={tab.id}
+                to={`/${tab.id}`}
+                className={({ isActive }) =>
+                  `flex flex-1 items-center justify-center py-2.5 text-[11px] font-medium transition-colors min-w-0 ${
+                    isActive ? 'text-primary' : 'text-muted-foreground'
+                  }`
+                }
+              >
+                {({ isActive }) => (
+                  <motion.span
+                    layout
+                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                    className={`flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1.5 ${
+                      isActive ? 'bg-gradient-brand text-white shadow-md shadow-brand-500/25' : ''
+                    }`}
+                  >
+                    <tab.icon className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{tab.label}</span>
+                  </motion.span>
+                )}
+              </NavLink>
+            ))}
+          </div>
+        </nav>
       </div>
   )
 }
