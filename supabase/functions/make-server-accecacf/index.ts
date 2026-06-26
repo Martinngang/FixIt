@@ -167,8 +167,12 @@ app.delete('/make-server-accecacf/users/:id', userController.deleteUser)
 
 // Notification routes
 app.get('/make-server-accecacf/notifications', notificationController.getNotifications)
+app.get('/make-server-accecacf/notifications/sent', notificationController.getSentNotifications)
 app.post('/make-server-accecacf/notifications', notificationController.sendNotification)
 app.patch('/make-server-accecacf/notifications/:id/read', notificationController.markAsRead)
+app.patch('/make-server-accecacf/notifications/:id/unread', notificationController.markAsUnread)
+app.patch('/make-server-accecacf/notifications/mark-all-read', notificationController.markAllAsRead)
+app.delete('/make-server-accecacf/notifications/:id', notificationController.deleteNotification)
 
 // Profile routes
 app.get('/make-server-accecacf/leaderboard', profileController.getLeaderboard)

@@ -1,4 +1,5 @@
 import * as kv from '../kv_store.tsx'
+import * as notificationModel from './notificationModel.ts'
 import { NotFoundError, ForbiddenError, ValidationError } from '../utils/errors.ts'
 import { getIssue } from './issueModel.ts'
 
@@ -29,6 +30,28 @@ export async function createComment(issueId: string, userId: string, userName: s
   }
 
   await kv.set(`comment:${issueId}:${comment.id}`, comment)
+
+  // Notify the reporter and assigned technician, skipping the commenter
+  // themselves and skipping SMS reports - reportedBy there is the citizen's
+  // phone number, not a real user id, so there's nobody to notify in-app.
+  if (issue.reportedVia !== 'sms') {
+    const recipients = new Set<string>([issue.reportedBy, issue.assignedTo].filter(Boolean))
+    recipients.delete(userId)
+
+    for (const recipientId of recipients) {
+      await notificationModel.createNotification({
+        recipientId,
+        title: 'New comment on an issue',
+        message: `${userName} commented on "${issue.title}"`,
+        type: 'info',
+        relatedIssueId: issueId,
+        senderId: userId,
+        senderName: userName,
+        priority: 'low',
+      })
+    }
+  }
+
   return comment
 }
 

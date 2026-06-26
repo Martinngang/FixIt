@@ -21,6 +21,25 @@ function assertIssueAccess(issue: any, organizationId: string | null, userId?: s
   throw new NotFoundError('Issue not found')
 }
 
+// In-app counterpart to smsReportModel.notifySmsReporterOfStatusChange - SMS
+// reports use the reporter's phone number as reportedBy (not a real user
+// id), so they're handled by SMS instead; everyone else gets notified here.
+async function notifyReporterOfStatusChange(previousStatus: string, updatedIssue: any, actorId: string) {
+  if (updatedIssue.reportedVia === 'sms') return
+  if (updatedIssue.status === previousStatus) return
+  if (!updatedIssue.reportedBy || updatedIssue.reportedBy === actorId) return
+
+  await notificationModel.createNotification({
+    recipientId: updatedIssue.reportedBy,
+    title: 'Your issue status changed',
+    message: `"${updatedIssue.title}" is now: ${updatedIssue.status.replace(/_/g, ' ')}`,
+    type: 'issue_updated',
+    relatedIssueId: updatedIssue.id,
+    senderId: actorId,
+    priority: 'medium',
+  })
+}
+
 export async function assignToMe(c: AppContext) {
   try {
     const user = await getAuthenticatedUser(c)
@@ -91,6 +110,7 @@ export async function updateIssue(c: AppContext) {
     })
 
     await smsReportModel.notifySmsReporterOfStatusChange(updatedIssue)
+    await notifyReporterOfStatusChange(issue.status, updatedIssue, user.id)
 
     return c.json({ success: true, issue: updatedIssue })
   } catch (error) {
@@ -262,6 +282,7 @@ export async function updateStatus(c: AppContext) {
     const updatedIssue = await issueModel.updateStatus(issueId, status, user.id, adminNote)
 
     await smsReportModel.notifySmsReporterOfStatusChange(updatedIssue)
+    await notifyReporterOfStatusChange(issue.status, updatedIssue, user.id)
 
     return c.json({ success: true, issue: updatedIssue })
   } catch (error) {

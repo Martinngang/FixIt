@@ -85,7 +85,12 @@ const translations = {
     startListening: 'Start Speaking',
     stopListening: 'Stop Listening',
     listening: 'Listening...',
+    preparingToListen: 'Getting ready to listen...',
+    voiceListenPrompt: 'Listening, go on.',
     voiceTranscriptPlaceholder: 'Your speech will appear here...',
+    voiceMicSilent: "We're not picking up any sound. Check that your microphone is allowed and unmuted in this browser and your OS settings.",
+    voiceInsecureContext: "Microphone access needs a secure connection. If you're testing on the network IP (e.g. 192.168.x.x), use http://localhost instead, or HTTPS.",
+    voiceNoMic: 'No microphone was found on this device.',
     fillFormWithAI: 'Fill Form with AI',
     processingVoice: 'Processing...',
     readAloud: 'Read Form Aloud',
@@ -93,6 +98,7 @@ const translations = {
     empty: 'empty',
     voiceNotSupported: 'Voice input is not supported in this browser. Try Chrome or Edge.',
     voiceError: 'Speech recognition error. Please try again.',
+    voiceMicDenied: 'Microphone access was denied. Please allow microphone access in your browser settings.',
     voiceFillSuccess: 'Form filled from your voice report. Please review before submitting.',
     voiceFallback: 'AI assistant unavailable right now. Your description was added - please fill in the other fields manually.',
     voiceProcessError: 'Failed to process voice transcript.',
@@ -143,7 +149,12 @@ const translations = {
     startListening: 'Commencer à parler',
     stopListening: 'Arrêter l\'écoute',
     listening: 'Écoute en cours...',
+    preparingToListen: 'Préparation de l\'écoute...',
+    voiceListenPrompt: 'Je vous écoute, allez-y.',
     voiceTranscriptPlaceholder: 'Votre discours apparaîtra ici...',
+    voiceMicSilent: "Aucun son détecté. Vérifiez que le microphone est autorisé et non coupé dans ce navigateur et dans les paramètres de votre système.",
+    voiceInsecureContext: "L'accès au microphone nécessite une connexion sécurisée. Si vous testez via l'adresse IP réseau (ex. 192.168.x.x), utilisez http://localhost ou HTTPS à la place.",
+    voiceNoMic: 'Aucun microphone détecté sur cet appareil.',
     fillFormWithAI: 'Remplir avec l\'IA',
     processingVoice: 'Traitement...',
     readAloud: 'Lire le formulaire',
@@ -151,6 +162,7 @@ const translations = {
     empty: 'vide',
     voiceNotSupported: 'La saisie vocale n\'est pas prise en charge par ce navigateur. Essayez Chrome ou Edge.',
     voiceError: 'Erreur de reconnaissance vocale. Veuillez réessayer.',
+    voiceMicDenied: 'L\'accès au microphone a été refusé. Veuillez l\'autoriser dans les paramètres de votre navigateur.',
     voiceFillSuccess: 'Formulaire rempli à partir de votre signalement vocal. Veuillez vérifier avant de soumettre.',
     voiceFallback: 'Assistant IA indisponible pour le moment. Votre description a été ajoutée - veuillez remplir les autres champs manuellement.',
     voiceProcessError: 'Échec du traitement de la transcription vocale.',
@@ -200,12 +212,24 @@ export function ReportIssue({ session, language = 'en' }: { session: any; langua
   const cameraInputRef = useRef<HTMLInputElement>(null)
 
   const [isListening, setIsListening] = useState(false)
+  const [isPrompting, setIsPrompting] = useState(false)
   const [voiceTranscript, setVoiceTranscript] = useState('')
+  const [interimTranscript, setInterimTranscript] = useState('')
   const [voiceSupported, setVoiceSupported] = useState(false)
   const [processingVoice, setProcessingVoice] = useState(false)
   const [voiceOpen, setVoiceOpen] = useState(false)
   const recognitionRef = useRef<any>(null)
   const finalTranscriptRef = useRef('')
+  const listeningIntentRef = useRef(false)
+  const transcriptionArmedRef = useRef(true)
+  const transcriptionArmTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [micLevel, setMicLevel] = useState(0)
+  const [micSilent, setMicSilent] = useState(false)
+  const micStreamRef = useRef<MediaStream | null>(null)
+  const micAudioContextRef = useRef<AudioContext | null>(null)
+  const micRafRef = useRef<number | null>(null)
+  const micPeakLevelRef = useRef(0)
+  const micSilenceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [isOnline, setIsOnline] = useState(navigator.onLine)
   const [pendingReports, setPendingReports] = useState<PendingReport[]>([])
@@ -232,6 +256,14 @@ export function ReportIssue({ session, language = 'en' }: { session: any; langua
   useEffect(() => {
     const SpeechRecognitionCtor = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     setVoiceSupported(!!SpeechRecognitionCtor)
+
+    return () => {
+      listeningIntentRef.current = false
+      recognitionRef.current?.stop()
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel()
+      if (transcriptionArmTimeoutRef.current) clearTimeout(transcriptionArmTimeoutRef.current)
+      stopMicLevelMeter()
+    }
   }, [])
 
   useEffect(() => {
@@ -566,12 +598,93 @@ export function ReportIssue({ session, language = 'en' }: { session: any; langua
     setFormData(prev => ({ ...prev, [field]: value }))
   }
 
-  const startVoiceCapture = () => {
-    const SpeechRecognitionCtor = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    if (!SpeechRecognitionCtor) {
-      handleError(t.voiceNotSupported)
+  // Independent of SpeechRecognition (which only reports "no-speech"/silence,
+  // not whether the mic itself is receiving any signal). Runs its own
+  // getUserMedia + AnalyserNode so the UI can show real audio activity and,
+  // if there's none for a few seconds, tell the user to check mic
+  // permissions/hardware instead of just retrying recognition forever.
+  const startMicLevelMeter = async () => {
+    if (!window.isSecureContext) {
+      // getUserMedia is hard-blocked by the browser on insecure origins
+      // (anything but https:// or localhost) — this fails identically to a
+      // permission denial but with no prompt and no recognizable error,
+      // which is why a flat meter + working mic in other apps points here.
+      console.error('Mic level meter unavailable: insecure context', window.location.origin)
+      handleError(t.voiceInsecureContext)
       return
     }
+    if (!navigator.mediaDevices?.getUserMedia) {
+      console.error('Mic level meter unavailable: navigator.mediaDevices.getUserMedia missing')
+      return
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      micStreamRef.current = stream
+
+      const AudioContextCtor = (window as any).AudioContext || (window as any).webkitAudioContext
+      const audioContext: AudioContext = new AudioContextCtor()
+      micAudioContextRef.current = audioContext
+      // Contexts can come up "suspended" (autoplay-gesture policy) even when
+      // created right after a click, especially once an `await` separates
+      // construction from the gesture — left unresumed, the analyser reads
+      // all-zero data forever, which looks identical to "mic not working".
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume()
+      }
+
+      const source = audioContext.createMediaStreamSource(stream)
+      const analyser = audioContext.createAnalyser()
+      analyser.fftSize = 256
+      analyser.smoothingTimeConstant = 0.6
+      source.connect(analyser)
+
+      const data = new Uint8Array(analyser.frequencyBinCount)
+      micPeakLevelRef.current = 0
+      setMicSilent(false)
+
+      if (micSilenceTimeoutRef.current) clearTimeout(micSilenceTimeoutRef.current)
+      micSilenceTimeoutRef.current = setTimeout(() => {
+        if (micPeakLevelRef.current < 0.03) setMicSilent(true)
+      }, 4000)
+
+      const tick = () => {
+        if (audioContext.state !== 'running') audioContext.resume().catch(() => {})
+        analyser.getByteFrequencyData(data)
+        const avg = data.reduce((sum, v) => sum + v, 0) / data.length
+        const level = Math.min(1, avg / 80)
+        micPeakLevelRef.current = Math.max(micPeakLevelRef.current, level)
+        if (level >= 0.03) setMicSilent(false)
+        setMicLevel(level)
+        micRafRef.current = requestAnimationFrame(tick)
+      }
+      tick()
+    } catch (err: any) {
+      console.error('Mic level meter unavailable:', err?.name, err?.message)
+      if (err?.name === 'NotAllowedError' || err?.name === 'SecurityError') {
+        handleError(t.voiceMicDenied)
+      } else if (err?.name === 'NotFoundError') {
+        handleError(t.voiceNoMic)
+      }
+    }
+  }
+
+  const stopMicLevelMeter = () => {
+    if (micRafRef.current) cancelAnimationFrame(micRafRef.current)
+    micRafRef.current = null
+    if (micSilenceTimeoutRef.current) clearTimeout(micSilenceTimeoutRef.current)
+    micSilenceTimeoutRef.current = null
+    micStreamRef.current?.getTracks().forEach(track => track.stop())
+    micStreamRef.current = null
+    micAudioContextRef.current?.close().catch(() => {})
+    micAudioContextRef.current = null
+    setMicLevel(0)
+    setMicSilent(false)
+  }
+
+  const createRecognition = () => {
+    const SpeechRecognitionCtor = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SpeechRecognitionCtor) return null
 
     const recognition = new SpeechRecognitionCtor()
     recognition.lang = language === 'fr' ? 'fr-FR' : 'en-US'
@@ -579,6 +692,13 @@ export function ReportIssue({ session, language = 'en' }: { session: any; langua
     recognition.interimResults = true
 
     recognition.onresult = (event: any) => {
+      // Recognition starts immediately on click to keep the user-gesture
+      // window (Chrome can silently no-op mic capture if .start() runs
+      // outside it, e.g. inside a later async callback). While the
+      // "Listening, go on" prompt is still speaking, discard results so
+      // the mic doesn't transcribe its own prompt audio.
+      if (!transcriptionArmedRef.current) return
+
       let interim = ''
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const part = event.results[i][0].transcript
@@ -588,34 +708,148 @@ export function ReportIssue({ session, language = 'en' }: { session: any; langua
           interim += part
         }
       }
+      setInterimTranscript(interim)
       setVoiceTranscript((finalTranscriptRef.current + interim).trim())
     }
 
     recognition.onerror = (event: any) => {
       console.error('Speech recognition error:', event.error)
-      setIsListening(false)
-      handleError(t.voiceError)
+      // Mobile browsers fire "no-speech"/"aborted" frequently during brief
+      // pauses even in continuous mode; treat as transient and let onend
+      // restart the listener instead of surfacing an error to the user.
+      if (event.error === 'no-speech' || event.error === 'aborted') return
+
+      listeningIntentRef.current = false
+      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+        handleError(t.voiceMicDenied)
+      } else {
+        handleError(t.voiceError)
+      }
     }
 
     recognition.onend = () => {
+      if (listeningIntentRef.current) {
+        restartRecognition()
+        return
+      }
       setIsListening(false)
+    }
+
+    return recognition
+  }
+
+  // Browsers reliably throw if .start() is called synchronously on a session
+  // that just ended (especially on mobile), which would otherwise silently
+  // kill listening the first time the recognizer auto-ends. Spin up a fresh
+  // instance after a short delay instead of reusing the exhausted one.
+  const restartRecognition = () => {
+    setInterimTranscript('')
+    window.setTimeout(() => {
+      if (!listeningIntentRef.current) return
+      const recognition = createRecognition()
+      if (!recognition) {
+        listeningIntentRef.current = false
+        setIsListening(false)
+        return
+      }
+      recognitionRef.current = recognition
+      try {
+        recognition.start()
+      } catch (err) {
+        console.error('Failed to restart speech recognition:', err)
+        listeningIntentRef.current = false
+        setIsListening(false)
+      }
+    }, 300)
+  }
+
+  const beginListening = () => {
+    const recognition = createRecognition()
+    if (!recognition) {
+      handleError(t.voiceNotSupported)
+      return
     }
 
     finalTranscriptRef.current = ''
     setVoiceTranscript('')
+    setInterimTranscript('')
     recognitionRef.current = recognition
-    recognition.start()
+    listeningIntentRef.current = true
+    try {
+      recognition.start()
+    } catch (err) {
+      console.error('Failed to start speech recognition:', err)
+      listeningIntentRef.current = false
+      handleError(t.voiceError)
+      return
+    }
     setIsListening(true)
+    startMicLevelMeter()
+  }
+
+  const armTranscription = () => {
+    if (transcriptionArmTimeoutRef.current) {
+      clearTimeout(transcriptionArmTimeoutRef.current)
+      transcriptionArmTimeoutRef.current = null
+    }
+    transcriptionArmedRef.current = true
+    setIsPrompting(false)
+  }
+
+  const startVoiceCapture = () => {
+    const SpeechRecognitionCtor = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SpeechRecognitionCtor) {
+      handleError(t.voiceNotSupported)
+      return
+    }
+
+    // Start recognition synchronously, in direct response to the click, so
+    // the mic capture stays inside the user-gesture window. The "Listening,
+    // go on" prompt plays at the same time; its results are discarded via
+    // transcriptionArmedRef until it finishes, so it doesn't transcribe
+    // itself.
+    transcriptionArmedRef.current = false
+    beginListening()
+
+    if ('speechSynthesis' in window) {
+      setIsPrompting(true)
+      try {
+        const utterance = new SpeechSynthesisUtterance(t.voiceListenPrompt)
+        utterance.lang = language === 'fr' ? 'fr-FR' : 'en-US'
+        utterance.onend = armTranscription
+        utterance.onerror = armTranscription
+        window.speechSynthesis.cancel()
+        window.speechSynthesis.speak(utterance)
+      } catch (err) {
+        console.error('speechSynthesis.speak failed:', err)
+      }
+      // speechSynthesis end/error events are unreliable across browsers
+      // (notably right after cancel()+speak(), or before voices finish
+      // loading) — a missed event must never permanently disable
+      // transcription, so this fallback guarantees arming regardless.
+      transcriptionArmTimeoutRef.current = setTimeout(armTranscription, 2500)
+    } else {
+      armTranscription()
+    }
   }
 
   const stopVoiceCapture = () => {
+    if (transcriptionArmTimeoutRef.current) {
+      clearTimeout(transcriptionArmTimeoutRef.current)
+      transcriptionArmTimeoutRef.current = null
+    }
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel()
+    setIsPrompting(false)
+    listeningIntentRef.current = false
     recognitionRef.current?.stop()
     setIsListening(false)
+    stopMicLevelMeter()
   }
 
   const clearVoiceTranscript = () => {
     finalTranscriptRef.current = ''
     setVoiceTranscript('')
+    setInterimTranscript('')
   }
 
   const processVoiceTranscript = async () => {
@@ -811,14 +1045,18 @@ export function ReportIssue({ session, language = 'en' }: { session: any; langua
                     ) : (
                       <>
                         <div className="flex flex-wrap gap-2">
-                          {!isListening ? (
+                          {!isListening && !isPrompting ? (
                             <Button type="button" onClick={startVoiceCapture}>
                               <Mic className="h-4 w-4" />
                               {t.startListening}
                             </Button>
                           ) : (
                             <Button type="button" onClick={stopVoiceCapture} variant="destructive">
-                              <MicOff className="h-4 w-4" />
+                              {isPrompting ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <MicOff className="h-4 w-4" />
+                              )}
                               {t.stopListening}
                             </Button>
                           )}
@@ -842,14 +1080,35 @@ export function ReportIssue({ session, language = 'en' }: { session: any; langua
                           )}
                         </div>
 
-                        {isListening && (
-                          <p className="text-sm text-info flex items-center gap-2" role="status">
-                            <span className="relative flex h-2 w-2">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-info opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-2 w-2 bg-info"></span>
-                            </span>
-                            {t.listening}
+                        {isPrompting && (
+                          <p className="text-sm text-muted-foreground flex items-center gap-2" role="status">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            {t.preparingToListen}
                           </p>
+                        )}
+
+                        {isListening && (
+                          <div className="space-y-1.5">
+                            <p className="text-sm text-info flex items-center gap-2" role="status">
+                              <span className="relative flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-info opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-info"></span>
+                              </span>
+                              {t.listening}
+                            </p>
+                            <div className="h-1.5 w-full max-w-40 rounded-full bg-muted overflow-hidden">
+                              <div
+                                className="h-full bg-info transition-[width] duration-100 ease-out"
+                                style={{ width: `${Math.round(micLevel * 100)}%` }}
+                              />
+                            </div>
+                            {micSilent && (
+                              <p className="text-sm text-warning flex items-center gap-2">
+                                <AlertCircle className="h-4 w-4 shrink-0" />
+                                {t.voiceMicSilent}
+                              </p>
+                            )}
+                          </div>
                         )}
 
                         <div
@@ -857,7 +1116,17 @@ export function ReportIssue({ session, language = 'en' }: { session: any; langua
                           aria-live="polite"
                           role="status"
                         >
-                          {voiceTranscript || <span className="text-muted-foreground">{t.voiceTranscriptPlaceholder}</span>}
+                          {finalTranscriptRef.current.trim() || interimTranscript ? (
+                            <>
+                              {finalTranscriptRef.current.trim()}
+                              {interimTranscript && (
+                                <span className="text-muted-foreground italic"> {interimTranscript}</span>
+                              )}
+                              {isListening && <span className="ml-0.5 inline-block w-0.5 animate-pulse bg-primary align-middle h-3.5" />}
+                            </>
+                          ) : (
+                            <span className="text-muted-foreground">{t.voiceTranscriptPlaceholder}</span>
+                          )}
                         </div>
                       </>
                     )}

@@ -2,6 +2,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 import * as kv from '../kv_store.tsx'
 import * as userModel from './userModel.ts'
 import * as organizationModel from './organizationModel.ts'
+import * as notificationModel from './notificationModel.ts'
 import { requireStripe, FRONTEND_URL } from '../utils/stripe.ts'
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '../utils/errors.ts'
 import { logger } from '../utils/logger.ts'
@@ -81,9 +82,21 @@ export async function setContractorStatus(userId: string, status: 'approved' | '
     throw new NotFoundError('Contractor application not found')
   }
 
-  return await userModel.updateUser(userId, {
+  const updatedUser = await userModel.updateUser(userId, {
     user_metadata: { ...targetUser.user_metadata, marketplaceStatus: status },
   })
+
+  await notificationModel.createNotification({
+    recipientId: userId,
+    title: status === 'approved' ? 'Contractor application approved' : 'Contractor application rejected',
+    message: status === 'approved'
+      ? 'Your marketplace contractor application has been approved. Complete Stripe onboarding to start claiming jobs.'
+      : 'Your marketplace contractor application was not approved.',
+    type: status === 'approved' ? 'system' : 'info',
+    priority: 'high',
+  })
+
+  return updatedUser
 }
 
 // --- Job posting & claiming ---------------------------------------------
@@ -196,6 +209,16 @@ export async function claimJob(issue: any, contractor: any) {
   }
 
   await kv.set(`issue:${issue.id}`, updatedIssue)
+
+  await notificationModel.createNotification({
+    recipientId: issue.marketplace.postedBy,
+    title: 'Marketplace job claimed',
+    message: `${updatedIssue.marketplace.contractorName} claimed your posted job: ${issue.title}`,
+    type: 'info',
+    relatedIssueId: issue.id,
+    priority: 'medium',
+  })
+
   return updatedIssue
 }
 
@@ -377,6 +400,15 @@ async function finalizeCheckoutSession(session: any) {
       updatedAt: now,
     })
   }
+
+  await notificationModel.createNotification({
+    recipientId: transaction.contractorId,
+    title: 'Payment received',
+    message: `You've been paid for completing: ${transaction.issueTitle}`,
+    type: 'system',
+    relatedIssueId: transaction.issueId,
+    priority: 'high',
+  })
 }
 
 // An abandoned or timed-out Checkout session - let the transaction record

@@ -22,6 +22,7 @@ import {
   RefreshCw
 } from 'lucide-react'
 import { projectId } from "../utils/supabase/info.ts"
+import { supabase } from "../utils/supabase/client"
 
 interface Notification {
   id: string
@@ -177,10 +178,54 @@ export function NotificationsPanel({
   }
 
   useEffect(() => {
-    if (session?.access_token) {
-      fetchNotifications()
-    }
+    if (!session?.access_token) return
+
+    fetchNotifications()
   }, [session])
+
+  // Realtime subscription - the `notifications` table is RLS-scoped to
+  // auth.uid() = recipient_id, and this filter narrows the Postgres
+  // replication stream to just this user's rows. Each event is applied
+  // directly to local state, so there's no polling and no refetch.
+  useEffect(() => {
+    const userId = session?.user?.id
+    if (!userId) return
+
+    const toClientShape = (row: any): Notification => ({
+      id: row.id,
+      type: row.type,
+      title: row.title,
+      message: row.message,
+      read: row.read,
+      createdAt: row.created_at,
+      relatedIssueId: row.related_issue_id ?? undefined,
+      senderId: row.sender_id ?? undefined,
+      senderName: row.sender_name ?? undefined,
+      priority: row.priority,
+    })
+
+    const channel = supabase
+      .channel(`notifications:${userId}`)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'notifications', filter: `recipient_id=eq.${userId}`
+      }, (payload: any) => {
+        setNotifications((prev) => [toClientShape(payload.new), ...prev])
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'notifications', filter: `recipient_id=eq.${userId}`
+      }, (payload: any) => {
+        const updated = toClientShape(payload.new)
+        setNotifications((prev) => prev.map((n) => (n.id === updated.id ? updated : n)))
+      })
+      .on('postgres_changes', {
+        event: 'DELETE', schema: 'public', table: 'notifications', filter: `recipient_id=eq.${userId}`
+      }, (payload: any) => {
+        setNotifications((prev) => prev.filter((n) => n.id !== payload.old.id))
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [session?.user?.id])
 
   const markAsRead = async (notificationId: string) => {
     try {

@@ -146,6 +146,8 @@ const translations = {
     citizen: "Citizen",
     technician: "Technician",
     admin: "Administrator",
+    orgAdminRole: "Organisation Admin",
+    contractorRole: "Contractor",
     categories: "Categories",
     selectCategories: "Select categories for this technician",
     joinedOn: "Joined on",
@@ -179,6 +181,13 @@ const translations = {
     sendToAll: "Send Notification",
     sending: "Sending...",
     notificationSent: "Notification sent successfully",
+    composeTab: "Compose",
+    historyTab: "History",
+    sentTo: "Sent to",
+    recipientsCount: "recipients",
+    noSentHistory: "No notifications sent yet",
+    noSentHistoryDesc: "Notifications you send will appear here",
+    loadingHistory: "Loading history...",
     sortBy: "Sort by",
     sortRecent: "Most Recent",
     sortUpvotes: "Most Upvoted",
@@ -345,6 +354,8 @@ const translations = {
     citizen: "Citoyen",
     technician: "Technicien",
     admin: "Administrateur",
+    orgAdminRole: "Administrateur d'organisation",
+    contractorRole: "Entrepreneur",
     categories: "Catégories",
     selectCategories: "Sélectionner les catégories pour ce technicien",
     joinedOn: "Inscrit le",
@@ -378,6 +389,13 @@ const translations = {
     low: "Faible",
     sendToAll: "Envoyer la notification",
     sending: "Envoi...",
+    composeTab: "Composer",
+    historyTab: "Historique",
+    sentTo: "Envoyé à",
+    recipientsCount: "destinataires",
+    noSentHistory: "Aucune notification envoyée",
+    noSentHistoryDesc: "Les notifications que vous envoyez apparaîtront ici",
+    loadingHistory: "Chargement de l'historique...",
     notificationSent: "Notification envoyée avec succès",
     sortBy: "Trier par",
     sortRecent: "Plus récent",
@@ -582,6 +600,8 @@ interface User {
   categories: string[];
   createdAt: string;
   lastSeenAt?: string;
+  organizationId?: string | null;
+  marketplaceStatus?: "pending" | "approved" | "rejected" | null;
 }
 
 interface Organization {
@@ -725,6 +745,11 @@ export function AdminPanel({
     specificUserId: "",
     priority: "medium" as "low" | "medium" | "high",
   });
+  const [notificationTab, setNotificationTab] = useState<"compose" | "history">("compose");
+  const [sentNotifications, setSentNotifications] = useState<
+    { id: string; title: string; message: string; priority: string; target: string; recipientCount: number; createdAt: string }[]
+  >([]);
+  const [sentNotificationsLoading, setSentNotificationsLoading] = useState(false);
 
   // Organization
   const [organization, setOrganization] = useState<Organization | null | undefined>(undefined);
@@ -1464,6 +1489,7 @@ export function AdminPanel({
             title: notificationForm.title,
             message: notificationForm.message,
             type: "info",
+            priority: notificationForm.priority,
           }),
         },
       );
@@ -1484,6 +1510,7 @@ export function AdminPanel({
         priority: "medium",
       });
       addToast(t.notificationSent, 'success');
+      await fetchSentNotifications();
     } catch (err: any) {
       console.error("Send notification error:", err);
       handleError(err.message || "Failed to send notification");
@@ -1491,6 +1518,37 @@ export function AdminPanel({
       setUpdateLoading("");
     }
   };
+
+  const fetchSentNotifications = useCallback(async () => {
+    try {
+      setSentNotificationsLoading(true);
+
+      const headers: Record<string, string> = {
+        Authorization: `Bearer ${session.access_token}`,
+      };
+      if (tempRole) headers["X-Temp-Role"] = tempRole;
+
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/make-server-accecacf/notifications/sent`,
+        { headers },
+      );
+
+      if (!response.ok) throw new Error("Failed to load notification history");
+
+      const data = await response.json();
+      setSentNotifications(data.broadcasts || []);
+    } catch (err: any) {
+      console.error("Fetch sent notifications error:", err);
+    } finally {
+      setSentNotificationsLoading(false);
+    }
+  }, [session, tempRole]);
+
+  useEffect(() => {
+    if (notificationDialogOpen) {
+      fetchSentNotifications();
+    }
+  }, [notificationDialogOpen, fetchSentNotifications]);
 
   useEffect(() => {
     if (session?.access_token) {
@@ -2242,8 +2300,11 @@ export function AdminPanel({
                                 </p>
                                 <div className="flex flex-wrap items-center gap-2 mt-1">
                                   <Badge variant={getRoleVariant(user.role)}>
-                                    {t[user.role as keyof typeof t] ||
-                                      user.role}
+                                    {user.role === "admin" && user.organizationId
+                                      ? t.orgAdminRole
+                                      : user.role === "technician" && user.marketplaceStatus === "approved"
+                                        ? t.contractorRole
+                                        : t[user.role as keyof typeof t] || user.role}
                                   </Badge>
                                   <Badge
                                     variant={
@@ -2890,7 +2951,13 @@ export function AdminPanel({
                   </DialogTitle>
                 </DialogHeader>
 
-                <div className="space-y-4">
+                <Tabs value={notificationTab} onValueChange={(v) => setNotificationTab(v as "compose" | "history")}>
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="compose">{t.composeTab}</TabsTrigger>
+                    <TabsTrigger value="history">{t.historyTab}</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="compose" className="space-y-4 pt-2">
                   <div className="space-y-2">
                     <Label htmlFor="notificationTitle">
                       {t.notificationTitle}
@@ -2978,7 +3045,44 @@ export function AdminPanel({
                       </SelectContent>
                     </Select>
                   </div>
-                </div>
+                  </TabsContent>
+
+                  <TabsContent value="history" className="pt-2">
+                    {sentNotificationsLoading ? (
+                      <div className="space-y-2">
+                        <Skeleton className="h-16 w-full" />
+                        <Skeleton className="h-16 w-full" />
+                        <Skeleton className="h-16 w-full" />
+                      </div>
+                    ) : sentNotifications.length === 0 ? (
+                      <EmptyState
+                        icon={Bell}
+                        title={t.noSentHistory}
+                        description={t.noSentHistoryDesc}
+                      />
+                    ) : (
+                      <div className="max-h-96 space-y-3 overflow-y-auto pr-1">
+                        {sentNotifications.map((sent) => (
+                          <div key={sent.id} className="rounded-xl border border-border p-3 space-y-1.5">
+                            <div className="flex items-start justify-between gap-2">
+                              <span className="font-medium text-sm">{sent.title}</span>
+                              <StatusBadge kind="priority" value={sent.priority} />
+                            </div>
+                            <p className="text-sm text-muted-foreground">{sent.message}</p>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
+                              <Badge variant="outline" className="text-xs">
+                                {t.sentTo}: {sent.target === 'all' ? t.allUsers : sent.target === 'technicians' ? t.allTechnicians : sent.target === 'citizens' ? t.allCitizens : sent.target}
+                              </Badge>
+                              <span>{sent.recipientCount} {t.recipientsCount}</span>
+                              <span>·</span>
+                              <span>{new Date(sent.createdAt).toLocaleString()}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </TabsContent>
+                </Tabs>
 
                 <DialogFooter>
                   <Button
@@ -2987,23 +3091,25 @@ export function AdminPanel({
                   >
                     {t.cancel}
                   </Button>
-                  <Button
-                    onClick={sendNotification}
-                    disabled={
-                      updateLoading === "notification" ||
-                      !notificationForm.title ||
-                      !notificationForm.message
-                    }
-                  >
-                    {updateLoading === "notification" ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        {t.sending}
-                      </>
-                    ) : (
-                      t.sendToAll
-                    )}
-                  </Button>
+                  {notificationTab === "compose" && (
+                    <Button
+                      onClick={sendNotification}
+                      disabled={
+                        updateLoading === "notification" ||
+                        !notificationForm.title ||
+                        !notificationForm.message
+                      }
+                    >
+                      {updateLoading === "notification" ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          {t.sending}
+                        </>
+                      ) : (
+                        t.sendToAll
+                      )}
+                    </Button>
+                  )}
                 </DialogFooter>
               </DialogContent>
             </Dialog>

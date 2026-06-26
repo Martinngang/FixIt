@@ -49,6 +49,8 @@ const translations = {
     citizen: 'Citizen',
     technician: 'Technician',
     admin: 'Administrator',
+    orgAdminRole: 'Organisation Admin',
+    contractorRole: 'Contractor',
     reputation: 'Reputation & Badges',
     reputationSubtitle: 'Earn points and badges by reporting issues and helping your community',
     points: 'points',
@@ -119,6 +121,8 @@ const translations = {
     citizen: 'Citoyen',
     technician: 'Technicien',
     admin: 'Administrateur',
+    orgAdminRole: "Administrateur d'organisation",
+    contractorRole: 'Entrepreneur',
     reputation: 'Réputation et badges',
     reputationSubtitle: 'Gagnez des points et des badges en signalant des problèmes et en aidant votre communauté',
     points: 'points',
@@ -478,6 +482,8 @@ export function Profile({ session, language = 'en' }: ProfileProps) {
   }
 
   const getRoleDisplay = (role: string) => {
+    if (role === 'admin' && user?.organizationId) return t.orgAdminRole
+    if (role === 'technician' && user?.marketplaceStatus === 'approved') return t.contractorRole
     switch (role) {
       case 'citizen': return t.citizen
       case 'technician': return t.technician

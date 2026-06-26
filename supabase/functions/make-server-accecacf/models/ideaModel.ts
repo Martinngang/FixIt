@@ -1,4 +1,5 @@
 import * as kv from '../kv_store.tsx'
+import * as notificationModel from './notificationModel.ts'
 import { NotFoundError, ForbiddenError, ValidationError } from '../utils/errors.ts'
 
 export const IDEA_STATUSES = ['open', 'under_review', 'planned', 'in_progress', 'completed', 'rejected'] as const
@@ -81,6 +82,17 @@ export async function updateIdeaStatus(ideaId: string, status: string) {
 
   const updatedIdea = { ...idea, status, updatedAt: new Date().toISOString() }
   await kv.set(`idea:${ideaId}`, updatedIdea)
+
+  if (idea.createdBy) {
+    await notificationModel.createNotification({
+      recipientId: idea.createdBy,
+      title: 'Your idea status changed',
+      message: `"${idea.title}" is now: ${status.replace(/_/g, ' ')}`,
+      type: 'info',
+      priority: 'medium',
+    })
+  }
+
   return updatedIdea
 }
 
@@ -120,6 +132,19 @@ export async function createIdeaComment(ideaId: string, userId: string, userName
   }
 
   await kv.set(`idea_comment:${ideaId}:${comment.id}`, comment)
+
+  if (idea.createdBy && idea.createdBy !== userId) {
+    await notificationModel.createNotification({
+      recipientId: idea.createdBy,
+      title: 'New comment on your idea',
+      message: `${userName} commented on "${idea.title}"`,
+      type: 'info',
+      senderId: userId,
+      senderName: userName,
+      priority: 'low',
+    })
+  }
+
   return comment
 }
 

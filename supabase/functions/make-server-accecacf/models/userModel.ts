@@ -21,6 +21,8 @@ export async function listUsers(organizationId: string | null) {
       name: authUser.user_metadata?.name || 'Unknown',
       role: authUser.user_metadata?.role || 'citizen',
       categories: authUser.user_metadata?.categories || [],
+      organizationId: authUser.user_metadata?.organizationId ?? null,
+      marketplaceStatus: authUser.user_metadata?.marketplaceStatus ?? null,
       created_at: authUser.created_at,
       last_sign_in_at: authUser.last_sign_in_at,
       email_confirmed_at: authUser.email_confirmed_at

@@ -33,6 +33,7 @@ import {
 } from '../components/ui/dropdown-menu'
 import { User, MapPin, Settings, LogOut, Globe, Camera, Moon, Sun, Wrench, Bell, Users, UserCog, Menu, X, UserCircle, Heart, Boxes, Store, ChevronDown, MoreHorizontal } from 'lucide-react'
 import { supabase } from '../utils/supabase/client'
+import { projectId } from '../utils/supabase/info'
 // import './index.css'
 
 const translations = {
@@ -57,6 +58,8 @@ const translations = {
     citizen: 'Citizen',
     technicianRole: 'Technician',
     adminRole: 'Administrator',
+    orgAdminRole: 'Organisation Admin',
+    contractorRole: 'Contractor',
     switchRole: 'Switch Role (Testing)',
     roleUpdated: 'Role updated successfully',
     more: 'More'
@@ -82,6 +85,8 @@ const translations = {
     citizen: 'Citoyen',
     technicianRole: 'Technicien',
     adminRole: 'Administrateur',
+    orgAdminRole: 'Administrateur d\'organisation',
+    contractorRole: 'Entrepreneur',
     switchRole: 'Changer de rôle (Test)',
     roleUpdated: 'Rôle mis à jour avec succès',
     more: 'Plus'
@@ -99,6 +104,7 @@ function AppContent() {
   const [tempRole, setTempRole] = useState<string | null>(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [profileDialogOpen, setProfileDialogOpen] = useState(false)
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0)
   const { addToast } = useToast();
 
   useEffect(() => {
@@ -133,6 +139,50 @@ function AppContent() {
     return () => subscription.unsubscribe()
   }, [])
 
+  // Fetches the unread count once on login, then keeps it live via a
+  // Realtime subscription on the `notifications` table (RLS-scoped to
+  // auth.uid() = recipient_id) - no polling, the badge updates the instant
+  // a row is inserted/updated/deleted for this user.
+  useEffect(() => {
+    const userId = session?.user?.id
+    if (!session?.access_token || !userId) {
+      setUnreadNotificationCount(0)
+      return
+    }
+
+    fetch(`https://${projectId}.supabase.co/functions/v1/make-server-accecacf/notifications`, {
+      headers: { Authorization: `Bearer ${session.access_token}` }
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        if (!data) return
+        setUnreadNotificationCount((data.notifications || []).filter((n: any) => !n.read).length)
+      })
+      .catch(() => {})
+
+    const channel = supabase
+      .channel(`notification-badge:${userId}`)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'notifications', filter: `recipient_id=eq.${userId}`
+      }, (payload: any) => {
+        if (!payload.new.read) setUnreadNotificationCount((c) => c + 1)
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'notifications', filter: `recipient_id=eq.${userId}`
+      }, (payload: any) => {
+        if (payload.old.read === payload.new.read) return
+        setUnreadNotificationCount((c) => Math.max(0, c + (payload.new.read ? -1 : 1)))
+      })
+      .on('postgres_changes', {
+        event: 'DELETE', schema: 'public', table: 'notifications', filter: `recipient_id=eq.${userId}`
+      }, (payload: any) => {
+        if (!payload.old.read) setUnreadNotificationCount((c) => Math.max(0, c - 1))
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [session])
+
   const toggleTheme = () => {
     const newTheme = !isDarkMode
     setIsDarkMode(newTheme)
@@ -166,6 +216,16 @@ function AppContent() {
   const t = translations[language]
   const userRole = tempRole || user?.user_metadata?.role || 'citizen'
   const userName = user?.user_metadata?.name || user?.email || 'User'
+
+  // The underlying role is always citizen/technician/admin - "Organisation
+  // Admin" and "Contractor" are the same roles plus a flag (organizationId,
+  // marketplaceStatus) on the account, not separate role values, so the
+  // display label has to be computed rather than looked up directly.
+  const displayRoleLabel = (() => {
+    if (userRole === 'admin' && user?.user_metadata?.organizationId) return t.orgAdminRole
+    if (userRole === 'technician' && user?.user_metadata?.marketplaceStatus === 'approved') return t.contractorRole
+    return t[`${userRole}Role` as keyof typeof t] || userRole
+  })()
 
   const getTabsForRole = (role: string) => {
     const baseTabs = [
@@ -431,10 +491,13 @@ function AppContent() {
                     variant="ghost"
                     size="icon"
                     onClick={() => setMobileMenuOpen(true)}
-                    className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-background/80"
+                    className="relative h-8 w-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-background/80"
                     title={t.more}
                   >
                     <Menu className="h-4 w-4" />
+                    {unreadNotificationCount > 0 && (
+                      <span className="absolute top-0.5 right-0.5 h-2 w-2 rounded-full bg-destructive ring-2 ring-card" />
+                    )}
                   </Button>
                 </div>
 
@@ -455,7 +518,7 @@ function AppContent() {
                         <span className="text-sm font-medium text-foreground">{userName}</span>
                         <div className="flex items-center gap-1">
                           <span className="text-xs text-muted-foreground">
-                            {t[`${userRole}Role` as keyof typeof t] || userRole}
+                            {displayRoleLabel}
                           </span>
                           {tempRole && (
                             <Badge variant="warning" className="px-1.5 py-0 text-[10px]">Test</Badge>
@@ -488,8 +551,11 @@ function AppContent() {
 
                 <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                   <SheetTrigger asChild>
-                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                    <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground">
                       <Menu className="h-5 w-5" />
+                      {unreadNotificationCount > 0 && (
+                        <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-destructive ring-2 ring-card" />
+                      )}
                     </Button>
                   </SheetTrigger>
                   <SheetContent side="right" className="w-[85%] sm:max-w-sm flex flex-col gap-0 p-0">
@@ -513,7 +579,7 @@ function AppContent() {
                           <span className="text-foreground font-medium truncate">{userName}</span>
                           <div className="flex items-center gap-1.5 mt-1">
                             <Badge variant="outline" className="text-xs">
-                              {t[`${userRole}Role` as keyof typeof t] || userRole}
+                              {displayRoleLabel}
                             </Badge>
                             {tempRole && (
                               <Badge variant="warning" className="text-xs">Testing</Badge>
@@ -585,6 +651,11 @@ function AppContent() {
                             >
                               <tab.icon className="h-4 w-4" />
                               {tab.label}
+                              {tab.id === 'notifications' && unreadNotificationCount > 0 && (
+                                <Badge variant="destructive" className="ml-auto px-1.5 py-0 text-[10px]">
+                                  {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
+                                </Badge>
+                              )}
                             </NavLink>
                           ))}
                         </div>

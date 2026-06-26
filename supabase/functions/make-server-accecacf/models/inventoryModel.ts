@@ -161,7 +161,7 @@ async function notifyAdmins({ title, message, type, relatedIssueId, senderId, se
   message: string
   type: string
   relatedIssueId?: string
-  senderId: string
+  senderId?: string
   senderName: string
   organizationId: string | null
 }) {
@@ -215,7 +215,6 @@ async function ensureReorderRequest(item: any, triggeredBy: string, relatedIssue
     message: `Stock for "${item.name}" is at or below the reorder threshold (${item.quantityOnHand}/${item.reorderThreshold} ${item.unit}). A reorder request for ${reorder.quantityRequested} ${item.unit} has been created.`,
     type: 'reorder_needed',
     relatedIssueId,
-    senderId: 'system',
     senderName: 'FixIt System',
     organizationId: item.organizationId ?? null,
   })

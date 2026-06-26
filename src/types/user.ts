@@ -17,6 +17,7 @@ export interface User {
   address?: string;
   avatarUrl?: string;
   role: 'citizen' | 'technician' | 'admin';
+  organizationId?: string | null;
   categories?: string[];
   created_at?: string;
   last_sign_in_at?: string;

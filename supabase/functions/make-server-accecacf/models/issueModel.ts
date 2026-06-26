@@ -7,6 +7,7 @@ import { FRONTEND_URL } from '../utils/stripe.ts'
 import { getCompletedTaskCount } from './volunteerModel.ts'
 import { computeCredibility, getReporterTrust, recordReportOutcome } from './credibilityModel.ts'
 import { listUsers } from './userModel.ts'
+import * as notificationModel from './notificationModel.ts'
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -116,20 +117,14 @@ export async function autoAssignIssue(issue: any) {
       await kv.set(`issue:${issue.id}`, updatedIssue)
 
       // Send notification to technician
-      const notification = {
-        id: crypto.randomUUID(),
+      await notificationModel.createNotification({
         recipientId: assignedTechnician.id,
         title: 'New Issue Assigned',
         message: `A new issue has been automatically assigned to you: ${issue.title}`,
         type: 'assignment',
         relatedIssueId: issue.id,
-        senderId: 'system',
         senderName: 'System',
-        createdAt: new Date().toISOString(),
-        read: false
-      }
-
-      await kv.set(`notification:${assignedTechnician.id}:${notification.id}`, notification)
+      })
 
       if (assignedTechnician.email) {
         await sendEmail({
